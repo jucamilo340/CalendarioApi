@@ -10,7 +10,6 @@ export class EventCalendarController {
       if (!eventsCalendar) {
         return [];
       }
-
       return response.status(200).json(eventsCalendar);
     } catch (err) {
       if (err instanceof CustomError) {

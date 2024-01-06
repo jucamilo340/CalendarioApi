@@ -25,14 +25,21 @@ interface IProfesor extends Document {
   numeroTelefono?: string;
   tituloAcademico?: string;
   materias: Types.Array<Types.ObjectId | IMateria>;
-  disponibilidad: string[];
+  disponibilidad: RangoHorario[];
   salario?: number;
   auxiliar?: boolean;
+}
+
+export interface RangoHorario {
+  dia: string;
+  inicio: string;
+  fin: string;
 }
 
 export interface ISalon extends Document {
   nombre: string;
   capacidad: number;
+  disponibilidad: RangoHorario[];
 }
 
 export interface IClase extends Document {
@@ -82,6 +89,13 @@ const MateriaSchema = new mongoose.Schema<IMateria>({
   credits: { type: Number, required: true },
 });
 
+const RangoHorarioSchema = new mongoose.Schema({
+  dia: { type: String, required: true },
+  inicio: { type: String, required: true },
+  fin: { type: String, required: true },
+});
+
+
 const ProfesorSchema = new mongoose.Schema<IProfesor>({
   nombre: { type: String, required: true },
   fechaNacimiento: { type: Date },
@@ -89,7 +103,7 @@ const ProfesorSchema = new mongoose.Schema<IProfesor>({
   numeroTelefono: { type: String },
   tituloAcademico: { type: String },
   materias: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Materia' }],
-  disponibilidad: { type: [String], required: true },
+  disponibilidad: { type: [RangoHorarioSchema], required: true },
   salario: { type: Number },
   auxiliar: { type: Boolean },
 });
@@ -97,6 +111,7 @@ const ProfesorSchema = new mongoose.Schema<IProfesor>({
 const SalonSchema = new mongoose.Schema<ISalon>({
   nombre: { type: String, required: true },
   capacidad: { type: Number, required: true },
+  disponibilidad: { type: [RangoHorarioSchema], required: true },
 });
 
 const ClaseSchema = new mongoose.Schema<IClase>({
@@ -113,15 +128,15 @@ const EventCalendarModel = mongoose.model<IEventCalendar>(
   EventCalendarSchema
 );
 
-const Materia = mongoose.model<IMateria>('Materia', MateriaSchema);
-const Profesor = mongoose.model<IProfesor>('Profesor', ProfesorSchema);
-const Salon = mongoose.model<ISalon>('Salon', SalonSchema);
-const Clase = mongoose.model<IClase>('Clase', ClaseSchema);
+const MateriaModel = mongoose.model<IMateria>('Materia', MateriaSchema);
+const ProfesorModel = mongoose.model<IProfesor>('Profesor', ProfesorSchema);
+const SalonModel = mongoose.model<ISalon>('Salon', SalonSchema);
+const ClaseModel = mongoose.model<IClase>('Clase', ClaseSchema);
 
 export {
   EventCalendarModel,
-  Salon,
-  Clase,
-  Profesor,
-  Materia,
+  SalonModel,
+  ClaseModel,
+  ProfesorModel,
+  MateriaModel,
 };
