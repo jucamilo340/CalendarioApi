@@ -20,7 +20,6 @@ export class EventCalendarController {
   async create(request: Request, response: Response) {
     try {
       const { eventCalendar = null } = request.body;
-      console.log(eventCalendar);
       if (!eventCalendar) throw new CustomError("Event Calendar not found", 400);
       const eventCalendarData = await new EventCalendarModel(eventCalendar).save();
       if (!eventCalendar) throw new CustomError("Internal server error", 400);

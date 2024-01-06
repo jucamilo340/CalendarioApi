@@ -4,19 +4,27 @@ import { ProfesorModel } from "../../entities/Models";
 
 export class ProfesorController {
 
-  async getAll(request: Request, response: Response) {
-    try {
-      const profesores = await ProfesorModel.find({});
-      if (!profesores) {
-        return [];
+    async getAll(request: Request, response: Response) {
+        try {
+          const { materiaId, horario } = request.query;
+          const filter: any = {};
+          if (materiaId) {
+            filter.materias = materiaId;
+          }
+          if (horario) {
+            filter["disponibilidad.inicio"] = { $lte: horario };
+            filter["disponibilidad.fin"] = { $gte: horario };
+          }
+          const profesores = await ProfesorModel.find(filter);
+          return response.status(200).json(profesores);
+        } catch (err) {
+          if (err instanceof CustomError) {
+            response.status(err.status).json({ message: err.message });
+          } else {
+            response.status(500).json({ message: "Internal server error" });
+          }
+        }
       }
-      return response.status(200).json(profesores);
-    } catch (err) {
-      if (err instanceof CustomError) {
-        response.status(err.status).json({ message: err.message });
-      }
-    }
-  }
 
   async create(request: Request, response: Response) {
     try {

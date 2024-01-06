@@ -7,6 +7,9 @@ export interface IEventCalendar extends Document {
   end: Date;
   backgroundColor: string;
   textColor: string;
+  materia: mongoose.Types.ObjectId;
+  profesor: mongoose.Types.ObjectId;
+  salon: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -73,6 +76,9 @@ const EventCalendarSchema = new mongoose.Schema<IEventCalendar>(
       type: String,
       required: true,
     },
+    materia: { type: mongoose.Schema.Types.ObjectId, ref: 'Materia', required: true },
+    profesor: { type: mongoose.Schema.Types.ObjectId, ref: 'Profesor', required: true },
+    salon: { type: mongoose.Schema.Types.ObjectId, ref: 'Salon', required: true },
   },
   {
     timestamps: {
