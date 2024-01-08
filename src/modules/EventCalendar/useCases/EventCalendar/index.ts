@@ -6,17 +6,26 @@ export class EventCalendarController {
 
   async getAll(request: Request, response: Response) {
     try {
-      const eventsCalendar = await EventCalendarModel.find({});
+      const eventsCalendar = await EventCalendarModel.find({})
+        .populate('materia')
+        .populate('profesor')
+        .populate('salon')
+        .exec();
+  
       if (!eventsCalendar) {
-        return [];
+        return response.status(200).json([]);
       }
+  
       return response.status(200).json(eventsCalendar);
     } catch (err) {
       if (err instanceof CustomError) {
         response.status(err.status).json({ message: err.message });
+      } else {
+        response.status(500).json({ message: 'Internal Server Error' });
       }
     }
   }
+  
   async create(request: Request, response: Response) {
     try {
       const { eventCalendar = null } = request.body;
