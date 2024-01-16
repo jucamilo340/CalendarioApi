@@ -18,6 +18,7 @@ export interface IEventCalendar extends Document {
 export interface IMateria extends Document {
   nombre: string;
   horas: number;
+  horasSemanales: number
   credits: number;
 }
 
@@ -109,6 +110,7 @@ const EventCalendarSchema = new mongoose.Schema<IEventCalendar>(
 const MateriaSchema = new mongoose.Schema<IMateria>({
   nombre: { type: String, required: true },
   horas: { type: Number, required: true },
+  horasSemanales: { type: Number, required: true },
   credits: { type: Number, required: true },
 });
 

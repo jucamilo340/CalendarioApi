@@ -3,7 +3,6 @@ import { CustomError } from "../../../../shared/errors/CustomError";
 import {EventCalendarModel, ProfesorModel, SalonModel} from "../../entities/Models";
 import { convertirFormatoHorario } from "../../../../utils/methods";
 import { ObjectId } from 'mongodb';
-import { verificarDisponibilidadProfesor } from "../../../../utils/Generador";
 
 export class EventCalendarController {
 
@@ -66,10 +65,6 @@ export class EventCalendarController {
         const objectId = new ObjectId(id);
         const eventCalendarExist =  await EventCalendarModel.findOne({ _id: objectId });
         if (!eventCalendarExist) throw new CustomError("Event Calendar not exist", 400);
-        const nuevaOcupacion = convertirFormatoHorario({inicio:eventCalendarExist.start, fin: eventCalendarExist.end});
-        console.log(id)
-        console.log(eventCalendarExist)
-        console.log(nuevaOcupacion)
         const deleteEventCalendar = await EventCalendarModel.findOneAndDelete({ _id: new ObjectId(eventCalendarExist._id)});
         await ProfesorModel.findOneAndUpdate(
           { 'ocupacion.idEvent': eventCalendarExist.id },

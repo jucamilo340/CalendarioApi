@@ -56,8 +56,6 @@ export class GrupoController {
 
   async update(request: Request, response: Response) {
     const { grupo  } = request.body;
-    console.log(request.body)
-
     try {
         const id = grupo._id;
         if (!id) throw new CustomError("Grupo not found", 400);
