@@ -4,7 +4,7 @@ import { MateriaModel } from "../../entities/Models";
 
 export class MateriaController {
 
-  async getAll(equest: Request, response: Response) {
+  async getAll(request: Request, response: Response) {
     try {
       const materias = await MateriaModel.find({});
       if (!materias) {
@@ -21,7 +21,6 @@ export class MateriaController {
   async create(request: Request, response: Response) {
     try {
       const { materia = null } = request.body;
-      console.log(materia);
       if (!materia) throw new CustomError("Materia not found", 400);
 
       const materiaData = await new MateriaModel(materia).save();

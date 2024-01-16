@@ -1,12 +1,34 @@
 import { Request, Response } from "express";
 import { CustomError } from "../../../../shared/errors/CustomError";
 import { SalonModel } from "../../entities/Models";
+import { convertirFormatoHorario } from "../../../../utils/methods";
 
 export class SalonController {
 
   async getAll(request: Request, response: Response) {
     try {
-      const salones = await SalonModel.find({});
+      const { horario }: any = request.query;
+      const filter: any = {};
+      if (horario) {
+        const horarioC = convertirFormatoHorario(JSON.parse(horario));
+        // filter.disponibilidad = {
+        //   $elemMatch: {
+        //     dia: horarioC.dia,
+        //     inicio: { $lte: horarioC.inicio },
+        //     fin: { $gte: horarioC.fin }
+        //   }
+        // };
+        filter.ocupacion = {
+          $not: {
+            $elemMatch: {
+              dia: horarioC.dia,
+              inicio: { $lt: horarioC.fin },
+              fin: { $gt: horarioC.inicio }
+            }
+          }
+        }
+      }
+      const salones = await SalonModel.find(filter);
       if (!salones) {
         return [];
       }
@@ -21,7 +43,6 @@ export class SalonController {
   async create(request: Request, response: Response) {
     try {
       const { salon = null } = request.body;
-      console.log(salon);
       if (!salon) throw new CustomError("Salon not found", 400);
 
       const salonData = await new SalonModel(salon).save();

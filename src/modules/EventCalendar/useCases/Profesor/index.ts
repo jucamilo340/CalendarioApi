@@ -1,19 +1,35 @@
 import { Request, Response } from "express";
 import { CustomError } from "../../../../shared/errors/CustomError";
 import { ProfesorModel } from "../../entities/Models";
+import { convertirFormatoHorario } from "../../../../utils/methods";
 
 export class ProfesorController {
 
     async getAll(request: Request, response: Response) {
         try {
-          const { materiaId, horario } = request.query;
+          const { materiaId, horario }: any = request.query;
           const filter: any = {};
           if (materiaId) {
             filter.materias = materiaId;
           }
           if (horario) {
-            filter["disponibilidad.inicio"] = { $lte: horario };
-            filter["disponibilidad.fin"] = { $gte: horario };
+            const horarioC = convertirFormatoHorario(JSON.parse(horario));
+            // filter.disponibilidad = {
+            //   $elemMatch: {
+            //     dia: horarioC.dia,
+            //     inicio: { $lte: horarioC.inicio },
+            //     fin: { $gte: horarioC.fin }
+            //   }
+            // };
+            filter.ocupacion = {
+              $not: {
+                $elemMatch: {
+                  dia: horarioC.dia,
+                  inicio: { $lt: horarioC.fin },
+                  fin: { $gt: horarioC.inicio }
+                }
+              }
+            }
           }
           const profesores = await ProfesorModel.find(filter);
           return response.status(200).json(profesores);
@@ -29,7 +45,6 @@ export class ProfesorController {
   async create(request: Request, response: Response) {
     try {
       const { profesor = null } = request.body;
-      console.log(profesor);
       if (!profesor) throw new CustomError("Profesor not found", 400);
 
       const profesorData = await new ProfesorModel(profesor).save();
