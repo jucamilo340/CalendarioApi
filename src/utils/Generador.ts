@@ -221,7 +221,7 @@ function generarHorarioAleatorio() {
   return horarioAleatorio;
 }
 // Función para obtener un profesor disponible aleatorio
-function obtenerProfesorDisponible(horarioC:any, materia:string) {
+async function obtenerProfesorDisponible(horarioC: any, materia: string) {
   const filter: any = {};
   filter.materias = materia;
   filter.ocupacion = {
@@ -233,10 +233,18 @@ function obtenerProfesorDisponible(horarioC:any, materia:string) {
       }
     }
   }
-  return ProfesorModel.findOne(filter).exec();
+  // Obtener todos los profesores que cumplen con los criterios
+  const profesoresDisponibles = await ProfesorModel.find(filter).exec();
+  if (profesoresDisponibles.length === 0) {
+    // No hay profesores disponibles
+    return null;
+  }
+  // Seleccionar aleatoriamente un profesor de la lista
+  const profesorSeleccionado = profesoresDisponibles[Math.floor(Math.random() * profesoresDisponibles.length)];
+  return profesorSeleccionado;
 }
 // Función para obtener un salón disponible aleatorio
-function obtenerSalonDisponible(horarioC:any) {
+async function obtenerSalonDisponible(horarioC: any) {
   const filter: any = {};
   filter.ocupacion = {
     $not: {
@@ -247,30 +255,18 @@ function obtenerSalonDisponible(horarioC:any) {
       }
     }
   }
-  return SalonModel.findOne(filter).exec();
+  // Obtener todos los salones que cumplen con los criterios
+  const salonesDisponibles = await SalonModel.find(filter).exec();
+  if (salonesDisponibles.length === 0) {
+    // No hay salones disponibles
+    return null;
+  }
+  // Seleccionar aleatoriamente un salón de la lista
+  const salonSeleccionado = salonesDisponibles[Math.floor(Math.random() * salonesDisponibles.length)];
+  return salonSeleccionado;
 }
 
 export const crearEventos = async () => {
   const eventosGenerados = await algoritmoGenetico(100, 5);
-  const eventos = eventosGenerados.map((evento)=> (
-    {
-      title: 'Sin título',
-      start: evento.horaInicio,
-      end:  evento.horaFin,
-      backgroundColor: '#039be5',
-      textColor: '#ffffff',
-      profesor:  evento?.profesor?._id ? evento?.profesor?._id : evento?.profesor,
-      materia:  evento?.materia?._id ? evento?.materia?._id : evento?.materia,
-      salon:  evento?.salon,
-      grupo: '65a43241ac55ab5ec690d13e'
-    }));
-    try {
-      await EventCalendarModel.insertMany(eventos);
-    } catch (error) {
-      console.log(error);
-    }
-    console.log("Horario Generado Exitosamente");
+  return eventosGenerados
 }
-// Uso del algoritmo genético
-//const mejorHorario = algoritmoGenetico(100, 50); // Puedes ajustar los parámetros según tus necesidades
-// console.log("Mejor horario:", mejorHorario);

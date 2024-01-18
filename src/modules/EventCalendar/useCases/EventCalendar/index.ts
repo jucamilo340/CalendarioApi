@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import { CustomError } from "../../../../shared/errors/CustomError";
-import {EventCalendarModel, ProfesorModel, SalonModel} from "../../entities/Models";
+import {EventCalendarModel, GrupoModel, ProfesorModel, SalonModel} from "../../entities/Models";
 import { convertirFormatoHorario } from "../../../../utils/methods";
 import { ObjectId } from 'mongodb';
+import { crearEventos } from "../../../../utils/Generador";
 
 export class EventCalendarController {
 
@@ -53,6 +54,76 @@ export class EventCalendarController {
     );
       return response.status(201).json(eventCalendarData);
     } catch (err) {
+      if (err instanceof CustomError) {
+        response.status(err.status).json({ message: err.message });
+      }
+    }
+  }
+  async generarHorario(request: Request, response: Response) {
+    const { id } = request.params;
+    try {
+        if (!id) throw new CustomError("Id not found", 400);
+        const objectId = new ObjectId(id);
+        const grupoExist =  await GrupoModel.findOne({ _id: objectId });
+        if (!grupoExist) throw new CustomError("Grupo not exist", 400);
+        const eventos = await crearEventos();
+        const eventosG = eventos?.map((evento: any) => (
+          {
+            title: 'Sin título',
+            start: evento.horaInicio,
+            end: evento.horaFin,
+            backgroundColor: '#039be5',
+            textColor: '#ffffff',
+            profesor: evento?.profesor?._id ? evento?.profesor?._id : evento?.profesor,
+            materia: evento?.materia?._id ? evento?.materia?._id : evento?.materia,
+            salon: evento?.salon,
+            grupo: grupoExist._id
+          }));
+          const eventosGenerados:any = await EventCalendarModel.insertMany(eventosG);
+          await eventosGenerados.map(async (g:any)=>{
+            const nuevaOcupacion = convertirFormatoHorario({inicio:g.start, fin: g.end});
+            nuevaOcupacion?.idEvent = g._id;
+            await ProfesorModel.findOneAndUpdate(
+                { _id: g?.profesor },
+                { $push: { ocupacion: nuevaOcupacion } },
+                { new: true }
+            );
+            await SalonModel.findOneAndUpdate(
+              { _id: g?.salon },
+              { $push: { ocupacion: nuevaOcupacion } },
+              { new: true }
+          );
+          })
+          return response.status(200).json(eventosGenerados);
+    } catch (err) {
+        console.log(err);
+      if (err instanceof CustomError) {
+        response.status(err.status).json({ message: err.message });
+      }
+    }
+  }
+  async deleteAll(request: Request, response: Response) {
+    const { id } = request.params;
+    try {
+        if (!id) throw new CustomError("Id not found", 400);
+        const objectId = new ObjectId(id);
+        const eventosEliminados = await EventCalendarModel.find({ grupo: objectId });
+        const result = await EventCalendarModel.deleteMany({ grupo: objectId });
+        await eventosEliminados.map(async (g:any) => {
+          await ProfesorModel.findOneAndUpdate(
+            { 'ocupacion.idEvent': g.id },
+            { $pull: { ocupacion: { idEvent: g.id } } },
+            { new: true }
+          );
+          await SalonModel.findOneAndUpdate(
+            { 'ocupacion.idEvent': g.id },
+            { $pull: { ocupacion: { idEvent: g.id } } },
+            { new: true }
+          );
+        })
+        return response.status(200).json(result);
+    } catch (err) {
+        console.log(err);
       if (err instanceof CustomError) {
         response.status(err.status).json({ message: err.message });
       }

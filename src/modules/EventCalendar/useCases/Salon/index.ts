@@ -7,7 +7,7 @@ export class SalonController {
 
   async getAll(request: Request, response: Response) {
     try {
-      const { horario }: any = request.query;
+      const { horario,eventoId }: any = request.query;
       const filter: any = {};
       if (horario) {
         const horarioC = convertirFormatoHorario(JSON.parse(horario));
@@ -22,8 +22,9 @@ export class SalonController {
           $not: {
             $elemMatch: {
               dia: horarioC.dia,
-              inicio: { $lt: horarioC.fin },
-              fin: { $gt: horarioC.inicio }
+              inicio: { $lte: horarioC.fin },
+              fin: { $gt: horarioC.inicio },
+              idEvent: { $ne: eventoId }
             }
           }
         }

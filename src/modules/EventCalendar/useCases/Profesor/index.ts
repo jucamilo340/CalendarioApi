@@ -7,7 +7,7 @@ export class ProfesorController {
 
     async getAll(request: Request, response: Response) {
         try {
-          const { materiaId, horario }: any = request.query;
+          const { materiaId, horario, eventoId }: any = request.query;
           const filter: any = {};
           if (materiaId) {
             filter.materias = materiaId;
@@ -25,8 +25,9 @@ export class ProfesorController {
               $not: {
                 $elemMatch: {
                   dia: horarioC.dia,
-                  inicio: { $lt: horarioC.fin },
-                  fin: { $gt: horarioC.inicio }
+                  inicio: { $lte: horarioC.fin },
+                  fin: { $gt: horarioC.inicio },
+                  idEvent: { $ne: eventoId }
                 }
               }
             }
