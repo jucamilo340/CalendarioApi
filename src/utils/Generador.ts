@@ -64,7 +64,7 @@ async function mutar(individuo: Individuo): Individuo {
     case 0:
       // Cambiar el profesor
       // Aquí deberías llamar a tu función para obtener un profesor disponible
-      eventoAMutar.profesor = await obtenerProfesorDisponible(horarioC, eventoAMutar.materia);
+      //eventoAMutar.profesor = await obtenerProfesorDisponible(horarioC, eventoAMutar.materia);
       break;
     case 1:
       // Cambiar el salón
@@ -158,7 +158,9 @@ export async function generarEventosAleatoriosSemana(){
   const eventosSemana: Evento[] = [];
   // Obtén todas las materias
   const materias = await MateriaModel.find({});
+  const materiasCheck = []
     for (const materiaAleatoria of materias) {
+      const profesorDisponible = await obtenerProfesorDisponible2(materiaAleatoria._id);
       // Calcula el número máximo de eventos para esta materia en la semana
       const horasSemanalesMateria = materiaAleatoria.horasSemanales;
       const duracionEvento = materiaAleatoria.horas;
@@ -170,15 +172,22 @@ export async function generarEventosAleatoriosSemana(){
       }
       // Genera el horario para los eventos de la materia aleatoria
       for (let i = 0; i < maxEventosSemana; i++) {
-        const horaInicio = generarHorarioAleatorio();  // Ajusta según tus necesidades
-        const horaFin = moment(horaInicio).add(duracionEvento, 'hours').format("YYYY-MM-DDTHH:mm:ssZ");
-        const horarioC = convertirFormatoHorario({inicio:horaInicio, fin: horaFin});
-        const profesorDisponible = await obtenerProfesorDisponible(horarioC, materiaAleatoria._id);
+        let profesorAsignado = null;
+        let horaInicio;
+        let horaFin;
+        let horarioC;
+        while (!profesorAsignado) {
+          horaInicio = generarHorarioAleatorio();  // Ajusta según tus necesidades
+          horaFin = moment(horaInicio).add(duracionEvento, 'hours').format("YYYY-MM-DDTHH:mm:ssZ");
+          horarioC = convertirFormatoHorario({inicio:horaInicio, fin: horaFin});
+          profesorAsignado = await obtenerProfesorAsignado(profesorDisponible?._id,horarioC);
+          console.log(profesorAsignado);
+        }
         const salonDisponible = await obtenerSalonDisponible(horarioC);
         const evento: any = {
-          materia: materiaAleatoria._id,
-          profesor: profesorDisponible._id,
-          salon: salonDisponible._id,
+          materia: materiaAleatoria?._id,
+          profesor: profesorAsignado?._id,
+          salon: salonDisponible?._id,
           horaInicio: horaInicio,
           horaFin: horaFin,
           materiaNombre:materiaAleatoria.nombre,
@@ -220,6 +229,37 @@ function generarHorarioAleatorio() {
 
   return horarioAleatorio;
 }
+async function obtenerProfesorDisponible2(materia: string) {
+  const filter: any = {};
+  filter.materias = materia;
+  // Obtener todos los profesores que cumplen con los criterios
+  const profesoresDisponibles = await ProfesorModel.find(filter).exec();
+  if (profesoresDisponibles.length === 0) {
+    // No hay profesores disponibles
+    return null;
+  }
+  // Seleccionar aleatoriamente un profesor de la lista
+  const profesorSeleccionado = profesoresDisponibles[Math.floor(Math.random() * profesoresDisponibles.length)];
+  return profesorSeleccionado;
+}
+
+async function obtenerProfesorAsignado(profesorId: string, horarioC:any) {
+  const filter: any = {};
+  filter._id = profesorId;
+  filter.ocupacion = {
+    $not: {
+      $elemMatch: {
+        dia: horarioC.dia,
+        inicio: { $lt: horarioC.fin },
+        fin: { $gt: horarioC.inicio }
+      }
+    }
+  }
+  // Obtener todos los profesores que cumplen con los criterios
+  const profesoresDisponible = await ProfesorModel.findOne(filter).exec();
+  return profesoresDisponible;
+}
+
 // Función para obtener un profesor disponible aleatorio
 async function obtenerProfesorDisponible(horarioC: any, materia: string) {
   const filter: any = {};
