@@ -8,6 +8,7 @@ export class ProfesorController {
     async getAll(request: Request, response: Response) {
         try {
           const { materiaId, horario, eventoId }: any = request.query;
+          console.log(materiaId);
           const filter: any = {};
           if (materiaId) {
             filter.materias = materiaId;

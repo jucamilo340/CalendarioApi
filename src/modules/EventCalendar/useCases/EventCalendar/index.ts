@@ -138,13 +138,13 @@ export class EventCalendarController {
         if (!eventCalendarExist) throw new CustomError("Event Calendar not exist", 400);
         const deleteEventCalendar = await EventCalendarModel.findOneAndDelete({ _id: new ObjectId(eventCalendarExist._id)});
         await ProfesorModel.findOneAndUpdate(
-          { 'ocupacion.idEvent': eventCalendarExist.id },
-          { $pull: { ocupacion: { idEvent: eventCalendarExist.id } } },
+          { 'ocupacion.idEvent': eventCalendarExist._id },
+          { $pull: { ocupacion: { idEvent: eventCalendarExist._id } } },
           { new: true }
         );
         await SalonModel.findOneAndUpdate(
           { 'ocupacion.idEvent': eventCalendarExist.id },
-          { $pull: { ocupacion: { idEvent: eventCalendarExist.id } } },
+          { $pull: { ocupacion: { idEvent: eventCalendarExist._id } } },
           { new: true }
         );
         return response.status(200).json(deleteEventCalendar);
@@ -157,20 +157,16 @@ export class EventCalendarController {
   }
   async update(request: Request, response: Response) {
     const { eventCalendar = null } = request.body;
-
     try {
         const id = eventCalendar._id;
         if (!id) throw new CustomError("Event Calendar not found", 400);
         const eventCalendarExist = await EventCalendarModel.findOne({id});
-  
         if (!eventCalendarExist) throw new CustomError("Internal server error", 400);
-  
         for (const index in eventCalendar) {
           if (typeof eventCalendar[index] === "undefined") {
             delete eventCalendar[index];
           }
         }
-        
         const eventCalendarData = await EventCalendarModel.findOneAndUpdate({
             _id: id,
           }, {
@@ -191,16 +187,41 @@ export class EventCalendarController {
             { new: true }
           );
            await ProfesorModel.findOneAndUpdate(
-             { _id: eventCalendarExist?.profesor },
+             { _id: eventCalendar?.profesor },
              { $push: { ocupacion: nuevaOcupacion } },
              { new: true }
            );
            await SalonModel.findOneAndUpdate(
-             { _id: eventCalendarExist?.salon },
+             { _id: eventCalendar?.salon },
              { $push: { ocupacion: nuevaOcupacion } },
              { new: true });
           //await verificarDisponibilidadProfesor(eventCalendarExist?.profesor,{inicio:eventCalendar.start, fin: eventCalendar.end});
-
+          return response.status(201).json(eventCalendarData);
+    } catch (err) {
+      if (err instanceof CustomError) {
+        response.status(err.status).json({ message: err.message });
+      }
+    }
+  }
+  async updateDate(request: Request, response: Response) {
+    const { eventCalendar = null } = request.body;
+    try {
+        const id = eventCalendar._id;
+        if (!id) throw new CustomError("Event Calendar not found", 400);
+        const eventCalendarExist = await EventCalendarModel.findOne({id});
+        if (!eventCalendarExist) throw new CustomError("Internal server error", 400);
+        for (const index in eventCalendar) {
+          if (typeof eventCalendar[index] === "undefined") {
+            delete eventCalendar[index];
+          }
+        }
+        const eventCalendarData = await EventCalendarModel.findOneAndUpdate({
+            _id: id,
+          }, {
+            $set: eventCalendar
+          }, {
+            new: true,
+          });
           return response.status(201).json(eventCalendarData);
     } catch (err) {
       if (err instanceof CustomError) {
@@ -209,3 +230,5 @@ export class EventCalendarController {
     }
   }
 }
+
+

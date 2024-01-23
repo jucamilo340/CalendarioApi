@@ -106,17 +106,14 @@ async function calcularAptitud(individuo: Individuo) {
   const eventosOrdenados = individuo.eventos.sort((a, b) => (a.horaInicio < b.horaInicio ? -1 : 1));
   let penalizacionCruces = 0;
   let penalizacionFaltaHoras = 0;
-
   // Penalizar cruces de horarios
   for (let i = 0; i < eventosOrdenados.length - 1; i++) {
     if (eventosOrdenados[i].horaFin > eventosOrdenados[i + 1].horaInicio) {
       penalizacionCruces++;
     }
   }
-
   // Penalizar falta de horas para las materias
   const materias = [...new Set(individuo.eventos.map((evento) => evento.materia))];
-  
   for (const materia of materias) {
     const eventosMateria = individuo.eventos.filter((evento) => evento.materia === materia);
     const duracionTotalMateria = eventosMateria.reduce((total, evento) => total + evento.duracion, 0);
@@ -127,14 +124,11 @@ async function calcularAptitud(individuo: Individuo) {
       penalizacionFaltaHoras += horasSemanalesMateria - duracionTotalMateria;
     }
   }
-
   // Puedes agregar más lógica para penalizar otros aspectos del horario
-
   // Retorna un valor que represente la aptitud del individuo
   // Cuanto menor sea, mejor es el horario
   return penalizacionCruces + penalizacionFaltaHoras;
 }
-
 // // Algoritmo genético principal
 export async function algoritmoGenetico(tamanoPoblacion: number, numGeneraciones: number) {
   let poblacion = await inicializarPoblacion(tamanoPoblacion);
@@ -181,7 +175,6 @@ export async function generarEventosAleatoriosSemana(){
           horaFin = moment(horaInicio).add(duracionEvento, 'hours').format("YYYY-MM-DDTHH:mm:ssZ");
           horarioC = convertirFormatoHorario({inicio:horaInicio, fin: horaFin});
           profesorAsignado = await obtenerProfesorAsignado(profesorDisponible?._id,horarioC);
-          console.log(profesorAsignado);
         }
         const salonDisponible = await obtenerSalonDisponible(horarioC);
         const evento: any = {
@@ -243,7 +236,7 @@ async function obtenerProfesorDisponible2(materia: string) {
   return profesorSeleccionado;
 }
 
-async function obtenerProfesorAsignado(profesorId: string, horarioC:any) {
+export async function obtenerProfesorAsignado(profesorId: string, horarioC:any) {
   const filter: any = {};
   filter._id = profesorId;
   filter.ocupacion = {
