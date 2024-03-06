@@ -17,7 +17,9 @@ export interface IEventCalendar extends Document {
 
 export interface IMateria extends Document {
   nombre: string;
-  horas: number;
+  tipo: string;
+  sesiones: number;
+  nivel: number;
   horasSemanales: number
   credits: number;
 }
@@ -25,6 +27,7 @@ export interface IMateria extends Document {
 export interface IGrupo extends Document {
   nombre: string;
   semestre: number;
+  cantidad: number;
   diurno: false;
 }
 
@@ -36,6 +39,7 @@ interface IProfesor extends Document {
   correoElectronico?: string;
   numeroTelefono?: string;
   tituloAcademico?: string;
+  tipo?: string;
   materias: Types.Array<Types.ObjectId | IMateria>;
   ocupacion: RangoHorario[];
   salario?: number;
@@ -52,11 +56,14 @@ export interface RangoHorarioO {
   dia: string;
   inicio: string;
   fin: string;
+  nombre: string;
   idEvent: string
 }
 
 export interface ISalon extends Document {
   nombre: string;
+  tipo: string;
+  facultad: string;
   capacidad: number;
   disponibilidad: RangoHorario[];
   ocupacion: RangoHorarioO[];
@@ -109,7 +116,9 @@ const EventCalendarSchema = new mongoose.Schema<IEventCalendar>(
 
 const MateriaSchema = new mongoose.Schema<IMateria>({
   nombre: { type: String, required: true },
-  horas: { type: Number, required: true },
+  sesiones: { type: Number, required: true },
+  tipo: { type: String, required: true },
+  nivel: { type: Number, required: true },
   horasSemanales: { type: Number, required: true },
   credits: { type: Number, required: true },
 });
@@ -117,6 +126,7 @@ const MateriaSchema = new mongoose.Schema<IMateria>({
 const GrupoSchema = new mongoose.Schema<IGrupo>({
   nombre: { type: String, required: true },
   semestre: { type: Number, required: true },
+  cantidad: { type: Number, required: true },
   diurno: { type: Boolean, required: true },
 });
 
@@ -130,6 +140,7 @@ const RangoHorarioOSchema = new mongoose.Schema({
   dia: { type: String, required: true },
   inicio: { type: String, required: true },
   fin: { type: String, required: true },
+  nombre: { type: String, required: false },
   idEvent: { type: mongoose.Schema.Types.ObjectId, ref: 'EventCalendar', required: true },
 });
 
@@ -140,6 +151,7 @@ const ProfesorSchema = new mongoose.Schema<IProfesor>({
   correoElectronico: { type: String },
   numeroTelefono: { type: String },
   tituloAcademico: { type: String },
+  tipo: { type: String },
   materias: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Materia', required: true }],
   ocupacion: { type: [RangoHorarioOSchema], required: true },
   salario: { type: Number },
@@ -148,6 +160,8 @@ const ProfesorSchema = new mongoose.Schema<IProfesor>({
 
 const SalonSchema = new mongoose.Schema<ISalon>({
   nombre: { type: String, required: true },
+  tipo: { type: String, required: true },
+  facultad: { type: String, required: true },
   capacidad: { type: Number, required: true },
   ocupacion: { type: [RangoHorarioOSchema], required: true },
 });

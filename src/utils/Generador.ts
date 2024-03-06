@@ -1,5 +1,5 @@
 import * as mongoose from "mongoose";
-import { EventCalendarModel, MateriaModel, ProfesorModel, SalonModel } from "../modules/EventCalendar/entities/Models";
+import { MateriaModel, ProfesorModel, SalonModel } from "../modules/EventCalendar/entities/Models";
 import moment from "moment-timezone";
 import { convertirFormatoHorario } from "./methods";
 
@@ -16,30 +16,13 @@ interface Individuo {
   eventos: Evento[];
 }
 
-// Función de aptitud
-// function calcularAptitud(individuo: Individuo): number {
-//   // Lógica para evaluar la calidad del horario (ajusta según tus criterios)
-//   // Penaliza cruces de horarios, falta de horas para las materias, etc.
-//   // Ejemplo: penalizar cruces de horarios
-//   const eventosOrdenados = individuo.eventos.sort((a, b) => (a.horaInicio < b.horaInicio ? -1 : 1));
-//   let penalizacionCruces = 0;
-
-//   for (let i = 0; i < eventosOrdenados.length - 1; i++) {
-//     if (eventosOrdenados[i].horaFin > eventosOrdenados[i + 1].horaInicio) {
-//       penalizacionCruces++;
-//     }
-//   }
-
-//   return penalizacionCruces; // Cuanto menor sea, mejor es el horario
-// }
-
-// // Función de inicialización de población
-async function inicializarPoblacion(tamanoPoblacion: number): Individuo[] {
+// Función de inicialización de población
+async function inicializarPoblacion(tamanoPoblacion: number, jornada:string): Individuo[] {
   const poblacionPromesas: Individuo[] = [];
   // Lógica para generar individuos aleatorios
   for (let i = 0; i < tamanoPoblacion; i++) {
     const individuo: Individuo = {
-      eventos: await generarEventosAleatoriosSemana(),
+      eventos: await generarEventosAleatoriosSemana(jornada),
     };
     poblacionPromesas.push(individuo);
   }
@@ -86,10 +69,8 @@ async function mutar(individuo: Individuo): Individuo {
 function cruzar(padre1: Individuo, padre2: Individuo, puntoDeCruce: number): Individuo {
   // Lógica para combinar información de dos padres y generar descendencia
   // Punto de cruce específico
-
   // Asegurarse de que el punto de cruce esté dentro de los límites
   puntoDeCruce = Math.max(0, Math.min(puntoDeCruce, padre1.eventos.length - 1));
-
   // Crear la descendencia combinando la información de los padres en el punto de cruce
   const descendencia: Individuo = {
     eventos: [
@@ -97,22 +78,21 @@ function cruzar(padre1: Individuo, padre2: Individuo, puntoDeCruce: number): Ind
       ...padre2.eventos.slice(puntoDeCruce),
     ],
   };
-
   // Retorna la descendencia generada
   return descendencia;
 }
 
 async function calcularAptitud(individuo: Individuo) {
   const eventosOrdenados = individuo.eventos.sort((a, b) => (a.horaInicio < b.horaInicio ? -1 : 1));
-  let penalizacionCruces = 0;
-  let penalizacionFaltaHoras = 0;
   // Penalizar cruces de horarios
-  for (let i = 0; i < eventosOrdenados.length - 1; i++) {
-    if (eventosOrdenados[i].horaFin > eventosOrdenados[i + 1].horaInicio) {
-      penalizacionCruces++;
-    }
-  }
+  let penalizacionCruces = penalizacionarCruces(eventosOrdenados);
   // Penalizar falta de horas para las materias
+  let penalizacionFaltaHoras = await penalizarFaltaHoras(individuo);
+  // Retorna un valor que represente la aptitud del individuo
+  return penalizacionCruces + penalizacionFaltaHoras;
+}
+const penalizarFaltaHoras = async (individuo:any) => {
+  let penalizacionFaltaHoras = 0;
   const materias = [...new Set(individuo.eventos.map((evento) => evento.materia))];
   for (const materia of materias) {
     const eventosMateria = individuo.eventos.filter((evento) => evento.materia === materia);
@@ -124,14 +104,21 @@ async function calcularAptitud(individuo: Individuo) {
       penalizacionFaltaHoras += horasSemanalesMateria - duracionTotalMateria;
     }
   }
-  // Puedes agregar más lógica para penalizar otros aspectos del horario
-  // Retorna un valor que represente la aptitud del individuo
-  // Cuanto menor sea, mejor es el horario
-  return penalizacionCruces + penalizacionFaltaHoras;
+  return penalizacionFaltaHoras;
 }
-// // Algoritmo genético principal
-export async function algoritmoGenetico(tamanoPoblacion: number, numGeneraciones: number) {
-  let poblacion = await inicializarPoblacion(tamanoPoblacion);
+//Funcion para penalizar cruces
+const penalizacionarCruces = (eventosOrdenados:any) => {
+  let penalizacionCruces = 0;
+  for (let i = 0; i < eventosOrdenados.length - 1; i++) {
+    if (eventosOrdenados[i].horaFin > eventosOrdenados[i + 1].horaInicio) {
+      penalizacionCruces++;
+    }
+  }
+  return penalizacionCruces;
+}
+//Algoritmo genético principal
+export async function algoritmoGenetico(tamanoPoblacion: number, numGeneraciones: number, jornada:string) {
+  let poblacion = await inicializarPoblacion(tamanoPoblacion, jornada);
   for (let generacion = 0; generacion < numGeneraciones; generacion++) {
     poblacion = await Promise.all(poblacion.map(async (individuo) => {
       return {individuo, aptitud: await calcularAptitud(individuo)}
@@ -148,30 +135,24 @@ export async function algoritmoGenetico(tamanoPoblacion: number, numGeneraciones
 }
 
 // Función para generar eventos aleatorios con restricciones para toda la semana
-export async function generarEventosAleatoriosSemana(){
+export async function generarEventosAleatoriosSemana(jornada:any){
   const eventosSemana: Evento[] = [];
-  // Obtén todas las materias
   const materias = await MateriaModel.find({});
   const materiasCheck = []
     for (const materiaAleatoria of materias) {
       const profesorDisponible = await obtenerProfesorDisponible2(materiaAleatoria._id);
       // Calcula el número máximo de eventos para esta materia en la semana
-      const horasSemanalesMateria = materiaAleatoria.horasSemanales;
-      const duracionEvento = materiaAleatoria.horas;
-      const maxEventosSemana = Math.floor(horasSemanalesMateria / duracionEvento);
-      // Verifica si ya se alcanzó el límite de eventos para esta materia
-      if (eventosSemana.filter((e) => e.materia.equals(materiaAleatoria._id)).length >= maxEventosSemana) {
-        console.log(`Límite de eventos alcanzado para la materia ${materiaAleatoria.nombre} en la semana.`);
-        continue;
-      }
+      let horasSemanalesMateria = materiaAleatoria.horasSemanales;
       // Genera el horario para los eventos de la materia aleatoria
-      for (let i = 0; i < maxEventosSemana; i++) {
+      for (let i = 0; i < materiaAleatoria.sesiones; i++) {
         let profesorAsignado = null;
         let horaInicio;
         let horaFin;
         let horarioC;
+        let duracionEvento: number = Math.floor(horasSemanalesMateria / (materiaAleatoria.sesiones - i));
+        horasSemanalesMateria -= duracionEvento;
         while (!profesorAsignado) {
-          horaInicio = generarHorarioAleatorio();  // Ajusta según tus necesidades
+          horaInicio = generarHorarioAleatorio(duracionEvento, jornada);  // Ajusta según tus necesidades
           horaFin = moment(horaInicio).add(duracionEvento, 'hours').format("YYYY-MM-DDTHH:mm:ssZ");
           horarioC = convertirFormatoHorario({inicio:horaInicio, fin: horaFin});
           profesorAsignado = await obtenerProfesorAsignado(profesorDisponible?._id,horarioC);
@@ -185,43 +166,51 @@ export async function generarEventosAleatoriosSemana(){
           horaFin: horaFin,
           materiaNombre:materiaAleatoria.nombre,
         }
-        // Verificar si el nuevo evento se cruza con algún evento existente en el mismo día
-        // const seCruza = eventosSemana.some((e) =>
-        //   ((e.horaInicio <= evento.horaInicio && evento.horaInicio < e.horaFin) ||
-        //    (e.horaInicio < evento.horaFin && evento.horaFin <= e.horaFin))
-        // );
-        // // Si no se cruza, agregar el evento a la lista
-        // if (!seCruza) {
-        //   eventosSemana.push(evento);
-        // } else {
-        //   console.log(`Se encontró un cruce para el día. Intentando con nuevo horario.`);
-        //   i--;  // Intentar con un nuevo horario para el mismo día
-        // }
         eventosSemana.push(evento);
       }
     }
   return eventosSemana;
 }
 // Función para generar un horario aleatorio entre las 7 am y las 10 pm
-function generarHorarioAleatorio() {
+function generarHorarioAleatorio(duracion:any, tipo:any) {
   const fechaInicial = moment('2018-01-08');
   const fechaFinal = moment('2018-01-12');
-  // Calcula la diferencia en días entre las fechas
-  const diasDiferencia = fechaFinal.diff(fechaInicial, 'days');
-  // Elige un día aleatorio entre la fechaInicial y fechaFinal
-  const diaAleatorio = Math.floor(Math.random() * (diasDiferencia + 1));
-  // Establece la fecha elegida
-  const fechaElegida = fechaInicial.clone().add(diaAleatorio, 'days');
-  // Genera una hora aleatoria entre las 7 am y las 10 pm
-  const horaAleatoria = Math.floor(Math.random() * (15)) + 7;
-  // Establece la hora en punto
-  fechaElegida.set('hour', horaAleatoria);
-  fechaElegida.set('minute', 0);  // Establece los minutos en 0 para que sea una hora en punto
-  // Formatea la fecha en el formato deseado
-  const horarioAleatorio = fechaElegida.format();
-
+  let horarioAleatorio;
+  do {
+    // Elige un día aleatorio entre la fechaInicial y fechaFinal
+    const diaAleatorio = Math.floor(Math.random() * (fechaFinal.diff(fechaInicial, 'days') + 1));
+    // Establece la fecha elegida
+    const fechaElegida = fechaInicial.clone().add(diaAleatorio, 'days');
+    // Genera una hora aleatoria según el tipo
+    let horaAleatoria:any;
+    if (tipo === 'diurna') {
+      horaAleatoria = Math.floor(Math.random() * 11) + 7; // Entre las 7am y las 6pm
+    } else if (tipo === 'nocturna') {
+      horaAleatoria = Math.floor(Math.random() * 5) + 18; // Entre las 6pm y las 10pm
+    } else if (tipo === 'mixta') {
+      horaAleatoria = Math.floor(Math.random() * 15) + 7; // Entre las 7am y las 10pm
+    }
+    // Establece la hora en punto
+    fechaElegida.set('hour', horaAleatoria);
+    fechaElegida.set('minute', 0);  // Establece los minutos en 0 para que sea una hora en punto
+    // Calcula la hora de finalización sumando la duración
+    const horaFin = moment(fechaElegida).add(duracion, 'hours');
+    //const horaFin = fechaElegida.clone().add(duracion, 'hours');
+    // Verifica si la hora de finalización está dentro del rango permitido
+    if (
+      (tipo === 'diurna' && horaFin.isBefore(moment('18:00', 'HH:mm'))) ||
+      (tipo === 'nocturna' && horaFin.isBefore(moment('22:00', 'HH:mm'))) ||
+      (tipo === 'mixta' && horaFin.isBefore(moment('22:00', 'HH:mm')))
+    ) {
+      // Formatea la fecha en el formato deseado
+      horarioAleatorio = fechaElegida.format();
+    }
+    // Si la hora de finalización excede el rango permitido, se repetirá el proceso
+  } while (!horarioAleatorio);
   return horarioAleatorio;
 }
+
+
 async function obtenerProfesorDisponible2(materia: string) {
   const filter: any = {};
   filter.materias = materia;
@@ -299,7 +288,7 @@ async function obtenerSalonDisponible(horarioC: any) {
   return salonSeleccionado;
 }
 
-export const crearEventos = async () => {
-  const eventosGenerados = await algoritmoGenetico(100, 5);
+export const crearEventos = async (jornada:any) => {
+  const eventosGenerados = await algoritmoGenetico(100, 500, jornada ? 'diurna' : 'nocturna');
   return eventosGenerados
 }

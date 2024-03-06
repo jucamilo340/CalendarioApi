@@ -1,30 +1,65 @@
 import { Request, Response } from "express";
 import { CustomError } from "../../../../shared/errors/CustomError";
 import {EventCalendarModel, GrupoModel, ProfesorModel, SalonModel} from "../../entities/Models";
-import { convertirFormatoHorario } from "../../../../utils/methods";
+import { calcularDuracionEvento, convertirFormatoHorario, convertirFormatoHorarioReverso } from "../../../../utils/methods";
 import { ObjectId } from 'mongodb';
 import { crearEventos } from "../../../../utils/Generador";
+import moment from "moment-timezone";
 
 export class EventCalendarController {
 
   async getAll(request: Request, response: Response) {
     try {
-      const { grupoId }: any = request.query;
+      const { grupoId,filtros }: any = request.query;
       const filter: any = {};
       if (grupoId) {
         filter.grupo = grupoId;
+      }
+      if (JSON.parse(filtros).materia !== '') {
+        filter.materia = JSON.parse(filtros).materia;
+      }
+      const nuevosEventos = [];
+      if (JSON.parse(filtros).profesor !== '') {
+        filter.profesor = JSON.parse(filtros).profesor;
+        const profesorInfo = await ProfesorModel.findById(JSON.parse(filtros).profesor);
+        if (profesorInfo) {
+          for (const ocupacion of profesorInfo.ocupacion) {
+            if (ocupacion.nombre) {
+              // Crear un nuevo evento por cada ocupación del profesor con 
+              const date = convertirFormatoHorarioReverso(ocupacion);
+              const nuevoEvento = {
+                title: ocupacion.nombre,
+                start: date.start,
+                end: date.end,
+                backgroundColor: "#d32f2f",
+                textColor: "#fff",
+                materia: '',
+                profesor: '',
+                salon: '',
+                grupo: '',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              };
+              nuevosEventos.push(nuevoEvento);
+            }
+          }
+        }
+        
+      }
+      if (JSON.parse(filtros).salon !== '') {
+        filter.salon = JSON.parse(filtros).salon;
       }
       const eventsCalendar = await EventCalendarModel.find(filter)
         .populate('materia')
         .populate('profesor')
         .populate('salon')
         .exec();
-  
+        const eventosCompletos = [...eventsCalendar, ...nuevosEventos];
       if (!eventsCalendar) {
         return response.status(200).json([]);
       }
   
-      return response.status(200).json(eventsCalendar);
+      return response.status(200).json(eventosCompletos);
     } catch (err) {
       if (err instanceof CustomError) {
         response.status(err.status).json({ message: err.message });
@@ -38,9 +73,13 @@ export class EventCalendarController {
     try {
       const { eventCalendar = null } = request.body;
       if (!eventCalendar) throw new CustomError("Event Calendar not found", 400);
+      const duracionEvento = await calcularDuracionEvento(eventCalendar.materia,eventCalendar.grupo);
+      if (duracionEvento <= 0) throw new CustomError("Cantidad de Horas maximas en esta Asignatura", 400);
+      const nuevaHoraFinal= moment(eventCalendar.start).add(duracionEvento, 'hours').format("YYYY-MM-DDTHH:mm:ssZ");
+      eventCalendar.end = nuevaHoraFinal;
       const eventCalendarData = await new EventCalendarModel(eventCalendar).save();
       if (!eventCalendar) throw new CustomError("Internal server error", 400);
-      const nuevaOcupacion = convertirFormatoHorario({inicio:eventCalendar.start, fin: eventCalendar.end});
+      const nuevaOcupacion = convertirFormatoHorario({inicio:eventCalendar.start, fin: nuevaHoraFinal});
       nuevaOcupacion?.idEvent = eventCalendarData._id;
       await ProfesorModel.findOneAndUpdate(
           { _id: eventCalendar?.profesor },
@@ -66,10 +105,10 @@ export class EventCalendarController {
         const objectId = new ObjectId(id);
         const grupoExist =  await GrupoModel.findOne({ _id: objectId });
         if (!grupoExist) throw new CustomError("Grupo not exist", 400);
-        const eventos = await crearEventos();
+        const eventos = await crearEventos(grupoExist?.diurno);
         const eventosG = eventos?.map((evento: any) => (
           {
-            title: 'Sin título',
+            title: 'NaN',
             start: evento.horaInicio,
             end: evento.horaFin,
             backgroundColor: '#039be5',

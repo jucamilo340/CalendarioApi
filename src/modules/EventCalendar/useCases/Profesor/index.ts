@@ -1,14 +1,13 @@
 import { Request, Response } from "express";
 import { CustomError } from "../../../../shared/errors/CustomError";
 import { ProfesorModel } from "../../entities/Models";
-import { convertirFormatoHorario } from "../../../../utils/methods";
+import { convertirFormatoHorario, obtenerHorasAsignadasPorProfesor } from "../../../../utils/methods";
 
 export class ProfesorController {
 
     async getAll(request: Request, response: Response) {
         try {
           const { materiaId, horario, eventoId }: any = request.query;
-          console.log(materiaId);
           const filter: any = {};
           if (materiaId) {
             filter.materias = materiaId;
@@ -34,7 +33,13 @@ export class ProfesorController {
             }
           }
           const profesores = await ProfesorModel.find(filter);
-          return response.status(200).json(profesores);
+          const profesoresConHorasAsignadas = await Promise.all(
+            profesores.map(async (profesor) => {
+              const horasAsignadas = await obtenerHorasAsignadasPorProfesor(profesor._id);
+              return { ...profesor.toObject(), horasAsignadas };
+            })
+          );
+          return response.status(200).json(profesoresConHorasAsignadas);
         } catch (err) {
           if (err instanceof CustomError) {
             response.status(err.status).json({ message: err.message });

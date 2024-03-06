@@ -21,7 +21,6 @@ export class GrupoController {
   async create(request: Request, response: Response) {
     try {
       const  grupo  = request.body;
-      console.log(request.body);
       if (!grupo) throw new CustomError("Grupo not found", 400);
 
       const grupoData = await new GrupoModel(grupo).save();
@@ -37,7 +36,6 @@ export class GrupoController {
 
   async delete(request: Request, response: Response) {
     const { id } = request.params;
-    console.log(request);
     try {
         if (!id) throw new CustomError("Id not found", 400);
 
