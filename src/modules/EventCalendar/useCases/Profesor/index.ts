@@ -27,7 +27,7 @@ export class ProfesorController {
                   dia: horarioC.dia,
                   inicio: { $lte: horarioC.fin },
                   fin: { $gt: horarioC.inicio },
-                  idEvent: { $ne: eventoId }
+                  //idEvent: { $ne: eventoId }
                 }
               }
             }

@@ -1,7 +1,7 @@
 import * as mongoose from "mongoose";
 import { MateriaModel, ProfesorModel, SalonModel } from "../modules/EventCalendar/entities/Models";
 import moment from "moment-timezone";
-import { convertirFormatoHorario } from "./methods";
+import { convertirFormatoHorario, obtenerHorasAsignadasEnEventosSemana, obtenerHorasAsignadasPorProfesor } from "./methods";
 
 // Definir tipos y funciones auxiliares
 interface Evento {
@@ -26,6 +26,10 @@ async function inicializarPoblacion(tamanoPoblacion: number, jornada:string): In
     };
     poblacionPromesas.push(individuo);
   }
+  const poblacionVacia = poblacionPromesas.some(poblacion => poblacion.eventos.length === 0);
+  if (poblacionVacia) {
+    console.log('Error al generar el calendario');
+  }
   const poblacion = await Promise.all(poblacionPromesas);
   return poblacion;
 }
@@ -38,21 +42,20 @@ async function mutar(individuo: Individuo): Individuo {
   const individuoMutado: Individuo = { eventos: [...individuo.eventos] };
   // Elegir un evento aleatorio para mutar
   const indiceEventoAMutar = Math.floor(Math.random() * individuoMutado.eventos.length);
-  const eventoAMutar = individuoMutado.eventos[indiceEventoAMutar];
+  const eventoAMutar:any = individuoMutado.eventos[indiceEventoAMutar];
   // Elegir qué atributo mutar aleatoriamente (puedes ajustar según tus necesidades)
   const atributoAMutar = Math.floor(Math.random() * 3); // 0: profesor, 1: salón, 2: horario
   const horarioC = convertirFormatoHorario({inicio:eventoAMutar.horaInicio, fin: eventoAMutar.horaFin});
-
   switch (atributoAMutar) {
     case 0:
       // Cambiar el profesor
       // Aquí deberías llamar a tu función para obtener un profesor disponible
-      //eventoAMutar.profesor = await obtenerProfesorDisponible(horarioC, eventoAMutar.materia);
+      //eventoAMutar.profesor = await obtenerProfesorDisponible2( eventoAMutar.materia);
       break;
     case 1:
       // Cambiar el salón
       // Aquí deberías llamar a tu función para obtener un salón disponible
-      eventoAMutar.salon = await obtenerSalonDisponible(horarioC);
+      eventoAMutar.salon = await obtenerSalonDisponible(horarioC, eventoAMutar.tipoSalon);
       break;
     case 2:
       // Cambiar el horario
@@ -86,18 +89,20 @@ async function calcularAptitud(individuo: Individuo) {
   const eventosOrdenados = individuo.eventos.sort((a, b) => (a.horaInicio < b.horaInicio ? -1 : 1));
   // Penalizar cruces de horarios
   let penalizacionCruces = penalizacionarCruces(eventosOrdenados);
+  // Penalizar por tipos de profesor menos utilizados
+  const penalizacionTipoProfesor = await penalizarTipoProfesor(eventosOrdenados);
   // Penalizar falta de horas para las materias
   let penalizacionFaltaHoras = await penalizarFaltaHoras(individuo);
   // Retorna un valor que represente la aptitud del individuo
-  return penalizacionCruces + penalizacionFaltaHoras;
+  return penalizacionCruces + penalizacionFaltaHoras + penalizacionTipoProfesor;
 }
 const penalizarFaltaHoras = async (individuo:any) => {
   let penalizacionFaltaHoras = 0;
-  const materias = [...new Set(individuo.eventos.map((evento) => evento.materia))];
+  const materias = [...new Set(individuo.eventos.map((evento:any) => evento.materia))];
   for (const materia of materias) {
-    const eventosMateria = individuo.eventos.filter((evento) => evento.materia === materia);
-    const duracionTotalMateria = eventosMateria.reduce((total, evento) => total + evento.duracion, 0);
-    const materiaS = await MateriaModel.findOne({_id:materia});
+    const eventosMateria = individuo.eventos.filter((evento:any) => evento.materia === materia);
+    const duracionTotalMateria = eventosMateria.reduce((total:any, evento:any) => total + evento.duracion, 0);
+    const materiaS:any = await MateriaModel.findOne({_id:materia});
     const horasSemanalesMateria = materiaS.horasSemanales; 
     // Ajusta según tus necesidades
     if (duracionTotalMateria < horasSemanalesMateria) {
@@ -105,6 +110,30 @@ const penalizarFaltaHoras = async (individuo:any) => {
     }
   }
   return penalizacionFaltaHoras;
+}
+
+async function penalizarTipoProfesor(eventos: Evento[]) {
+  const contadorProfesores = new Map<string, number>();
+  for (const evento of eventos) {
+    const profesor = await ProfesorModel.findById(evento.profesor);
+    if (profesor) {
+      const tipoProfesor:any = profesor.tipo;
+      if (contadorProfesores.has(tipoProfesor)) {
+        contadorProfesores.set(tipoProfesor, contadorProfesores.get(tipoProfesor)! + 1);
+      } else {
+        contadorProfesores.set(tipoProfesor, 1);
+      }
+    }
+  }
+  let penalizacionTipo = 0;
+  const ordenTipos = ['contrato', 'carrera', 'catedratico'];
+  for (const tipo of ordenTipos) {
+    if (!contadorProfesores.has(tipo)) {
+      penalizacionTipo += 1;
+    }
+  }
+
+  return penalizacionTipo;
 }
 //Funcion para penalizar cruces
 const penalizacionarCruces = (eventosOrdenados:any) => {
@@ -118,59 +147,89 @@ const penalizacionarCruces = (eventosOrdenados:any) => {
 }
 //Algoritmo genético principal
 export async function algoritmoGenetico(tamanoPoblacion: number, numGeneraciones: number, jornada:string) {
-  let poblacion = await inicializarPoblacion(tamanoPoblacion, jornada);
+  let poblacion:any = await inicializarPoblacion(tamanoPoblacion, jornada);
   for (let generacion = 0; generacion < numGeneraciones; generacion++) {
-    poblacion = await Promise.all(poblacion.map(async (individuo) => {
+    poblacion = await Promise.all(poblacion.map(async (individuo:any) => {
       return {individuo, aptitud: await calcularAptitud(individuo)}
   }));
-    poblacion.sort((a, b) => a.aptitud - b.aptitud);
+    poblacion.sort((a:any, b:any) => a.aptitud - b.aptitud);
     const padresSeleccionados = poblacion.slice(0, tamanoPoblacion / 2);
     const puntoDeCruceEjemplo = 3;
-    const descendencia = padresSeleccionados.map((padre, index) =>
+    const descendencia = padresSeleccionados.map((padre:any, index:any) =>
       cruzar(padre.individuo, padresSeleccionados[index % padresSeleccionados.length].individuo, puntoDeCruceEjemplo)
     );
-    poblacion = [...padresSeleccionados.map((padre) => padre.individuo), ...await Promise.all(descendencia.map(mutar))];
+    poblacion = [...padresSeleccionados.map((padre:any) => padre.individuo), ...await Promise.all(descendencia.map(mutar))];
   }
   return poblacion[0].eventos;
 }
 
+async function obtenerProfesorAsignadoPorTipo(profesores: any[], duracionEvento: any, eventosSemana:any[]) {
+  for (const profesor of profesores) {
+    const horasAsignadas = await obtenerHorasAsignadasPorProfesor(profesor._id);
+    const eventosSemanaHoras = obtenerHorasAsignadasEnEventosSemana(profesor._id, eventosSemana);
+    //const horasMinimas = tipo === 'catedratico' ? 8 : 12;
+    const horasMaximas = profesor.tipo === 'catedratico' ? 12 : 16;
+    if (horasAsignadas + duracionEvento + eventosSemanaHoras <= horasMaximas) {
+      return profesor;
+    }else {
+      console.log(profesor.nombre, 'Supero las horas', horasAsignadas +eventosSemanaHoras);
+    }
+  }
+  return null;
+}
+
 // Función para generar eventos aleatorios con restricciones para toda la semana
-export async function generarEventosAleatoriosSemana(jornada:any){
+export async function generarEventosAleatoriosSemana(jornada: any) {
   const eventosSemana: Evento[] = [];
   const materias = await MateriaModel.find({});
-  const materiasCheck = []
-    for (const materiaAleatoria of materias) {
-      const profesorDisponible = await obtenerProfesorDisponible2(materiaAleatoria._id);
-      // Calcula el número máximo de eventos para esta materia en la semana
-      let horasSemanalesMateria = materiaAleatoria.horasSemanales;
-      // Genera el horario para los eventos de la materia aleatoria
-      for (let i = 0; i < materiaAleatoria.sesiones; i++) {
-        let profesorAsignado = null;
-        let horaInicio;
-        let horaFin;
-        let horarioC;
-        let duracionEvento: number = Math.floor(horasSemanalesMateria / (materiaAleatoria.sesiones - i));
-        horasSemanalesMateria -= duracionEvento;
-        while (!profesorAsignado) {
-          horaInicio = generarHorarioAleatorio(duracionEvento, jornada);  // Ajusta según tus necesidades
-          horaFin = moment(horaInicio).add(duracionEvento, 'hours').format("YYYY-MM-DDTHH:mm:ssZ");
-          horarioC = convertirFormatoHorario({inicio:horaInicio, fin: horaFin});
-          profesorAsignado = await obtenerProfesorAsignado(profesorDisponible?._id,horarioC);
+  
+  for (const materiaAleatoria of materias) {
+    const profesoresDisponibles = await obtenerProfesorDisponible2(materiaAleatoria._id);
+    let profesorP = null;
+    let horasSemanalesMateria = materiaAleatoria.horasSemanales;
+    for (const profesor of profesoresDisponibles) {
+        const horasAsignadas = await obtenerHorasAsignadasPorProfesor(profesor?._id);
+        const eventosSemanaHoras = obtenerHorasAsignadasEnEventosSemana(profesor._id, eventosSemana);
+        if (horasAsignadas + eventosSemanaHoras < 16) {
+          profesorP = profesor;
+          break;
+        } else {
+          continue;
         }
-        const salonDisponible = await obtenerSalonDisponible(horarioC);
-        const evento: any = {
-          materia: materiaAleatoria?._id,
-          profesor: profesorAsignado?._id,
-          salon: salonDisponible?._id,
-          horaInicio: horaInicio,
-          horaFin: horaFin,
-          materiaNombre:materiaAleatoria.nombre,
-        }
-        eventosSemana.push(evento);
-      }
     }
-  return eventosSemana;
+    if(!profesorP){
+      continue;
+    }
+    for (let i = 0; i < materiaAleatoria.sesiones; i++) {
+      let profesorAsignado = null;
+      let horaInicio;
+      let horaFin;
+      let horarioC;
+      let duracionEvento: number = Math.floor(horasSemanalesMateria / (materiaAleatoria.sesiones - i));
+      horasSemanalesMateria -= duracionEvento;
+      while (!profesorAsignado) {
+        horaInicio = generarHorarioAleatorio(duracionEvento, jornada);  // Ajusta según tus necesidades
+        horaFin = moment(horaInicio).add(duracionEvento, 'hours').format("YYYY-MM-DDTHH:mm:ssZ");
+        horarioC = convertirFormatoHorario({inicio:horaInicio, fin: horaFin});
+        profesorAsignado = await obtenerProfesorAsignado(profesorP?._id,horarioC);
+      }
+      const salonDisponible = await obtenerSalonDisponible(horarioC, materiaAleatoria.tipoSalon);
+      const evento: any = {
+        materia: materiaAleatoria?._id,
+        profesor: profesorAsignado?._id,
+        salon: salonDisponible?._id,
+        horaInicio: horaInicio,
+        horaFin: horaFin,
+        materiaNombre:materiaAleatoria.nombre,
+        tipoSalon:materiaAleatoria.tipoSalon,
+        idHorario: materiaAleatoria?._id+':'+profesorAsignado?._id
+      }
+      eventosSemana.push(evento);
+    }
+  }
+return eventosSemana;
 }
+
 // Función para generar un horario aleatorio entre las 7 am y las 10 pm
 function generarHorarioAleatorio(duracion:any, tipo:any) {
   const fechaInicial = moment('2018-01-08');
@@ -214,15 +273,18 @@ function generarHorarioAleatorio(duracion:any, tipo:any) {
 async function obtenerProfesorDisponible2(materia: string) {
   const filter: any = {};
   filter.materias = materia;
-  // Obtener todos los profesores que cumplen con los criterios
   const profesoresDisponibles = await ProfesorModel.find(filter).exec();
   if (profesoresDisponibles.length === 0) {
-    // No hay profesores disponibles
-    return null;
+    return [];
   }
-  // Seleccionar aleatoriamente un profesor de la lista
-  const profesorSeleccionado = profesoresDisponibles[Math.floor(Math.random() * profesoresDisponibles.length)];
-  return profesorSeleccionado;
+  profesoresDisponibles.sort((a:any, b:any) => {
+    const tipoPrioritario = ['contrato', 'carrera', 'invitado'];
+    const indexA = tipoPrioritario.indexOf(a.tipo);
+    const indexB = tipoPrioritario.indexOf(b.tipo);
+    return indexA - indexB;
+  });
+
+  return profesoresDisponibles;
 }
 
 export async function obtenerProfesorAsignado(profesorId: string, horarioC:any) {
@@ -266,8 +328,9 @@ async function obtenerProfesorDisponible(horarioC: any, materia: string) {
   return profesorSeleccionado;
 }
 // Función para obtener un salón disponible aleatorio
-async function obtenerSalonDisponible(horarioC: any) {
+async function obtenerSalonDisponible(horarioC: any, tipoSalon:string) {
   const filter: any = {};
+  filter.tipo = tipoSalon;
   filter.ocupacion = {
     $not: {
       $elemMatch: {

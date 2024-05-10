@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { CustomError } from "../../../../shared/errors/CustomError";
 import {EventCalendarModel, GrupoModel, ProfesorModel, SalonModel} from "../../entities/Models";
-import { calcularDuracionEvento, convertirFormatoHorario, convertirFormatoHorarioReverso } from "../../../../utils/methods";
+import { calcularDuracionEvento, convertirFormatoHorario, convertirFormatoHorarioReverso, verificarMateriasAsignadas } from "../../../../utils/methods";
 import { ObjectId } from 'mongodb';
 import { crearEventos } from "../../../../utils/Generador";
 import moment from "moment-timezone";
@@ -105,6 +105,10 @@ export class EventCalendarController {
         const objectId = new ObjectId(id);
         const grupoExist =  await GrupoModel.findOne({ _id: objectId });
         if (!grupoExist) throw new CustomError("Grupo not exist", 400);
+        // const materiasSinP = await verificarMateriasAsignadas();
+        // if(materiasSinP.length > 0){ 
+        //   return response.status(400).json({ message: `Hay materias sin profesor asignado`});
+        // }
         const eventos = await crearEventos(grupoExist?.diurno);
         const eventosG = eventos?.map((evento: any) => (
           {
@@ -137,7 +141,7 @@ export class EventCalendarController {
     } catch (err) {
         console.log(err);
       if (err instanceof CustomError) {
-        response.status(err.status).json({ message: err.message });
+        return response.status(err.status).json({ message: err.message });
       }
     }
   }

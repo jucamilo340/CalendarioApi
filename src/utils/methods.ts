@@ -122,3 +122,28 @@ function calcularDiferenciaHoras(start: Date, end: Date): number {
   }
   return 0;
 }
+
+export function obtenerHorasAsignadasEnEventosSemana(profesorId: string, eventosSemana: any) {
+  return eventosSemana.reduce((totalHoras:any, evento:any) => {
+    if (evento.profesor.equals(profesorId)) {
+      const duracionEvento = moment(evento.horaFin).diff(evento.horaInicio, 'hours');
+      return totalHoras + duracionEvento;
+    }
+    return totalHoras;
+  }, 0);
+}
+
+export async function verificarMateriasAsignadas(): Promise<string[]> {
+  const materias = await MateriaModel.find({});
+  const materiasSinProfesor: string[] = [];
+  for (const materia of materias) {
+    const profesorAsignado = await ProfesorModel.findOne({ materias: materia._id });
+    if (!profesorAsignado) {
+      materiasSinProfesor.push(materia.nombre);
+    }
+  }
+  if (materiasSinProfesor.length > 0) {
+    return materiasSinProfesor;
+  }
+  return [];
+}

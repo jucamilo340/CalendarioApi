@@ -18,10 +18,12 @@ export interface IEventCalendar extends Document {
 export interface IMateria extends Document {
   nombre: string;
   tipo: string;
+  tipoSalon: string;
   sesiones: number;
   nivel: number;
   horasSemanales: number
   credits: number;
+  requerimientos: Types.Array<Types.ObjectId | IMateria>;
 }
 
 export interface IGrupo extends Document {
@@ -118,9 +120,11 @@ const MateriaSchema = new mongoose.Schema<IMateria>({
   nombre: { type: String, required: true },
   sesiones: { type: Number, required: true },
   tipo: { type: String, required: true },
+  tipoSalon: { type: String, required: true },
   nivel: { type: Number, required: true },
   horasSemanales: { type: Number, required: true },
   credits: { type: Number, required: true },
+  requerimientos: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Materia', required: true }],
 });
 
 const GrupoSchema = new mongoose.Schema<IGrupo>({

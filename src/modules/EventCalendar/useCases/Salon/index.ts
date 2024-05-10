@@ -7,8 +7,11 @@ export class SalonController {
 
   async getAll(request: Request, response: Response) {
     try {
-      const { horario,eventoId }: any = request.query;
+      const { horario,eventoId,tipoSalon }: any = request.query;
       const filter: any = {};
+      if (tipoSalon) {
+        filter.tipo = tipoSalon;
+      }
       if (horario) {
         const horarioC = convertirFormatoHorario(JSON.parse(horario));
         // filter.disponibilidad = {

@@ -6,15 +6,13 @@ export class MateriaController {
 
   async getAll(request: Request, response: Response) {
     try {
-      const materias = await MateriaModel.find({});
-      if (!materias) {
-        return [];
-      }
+      const { semestre } = request.body;
+      console.log(request.body);
+      const materias = await MateriaModel.find({ semestre: semestre });
       return response.status(200).json(materias);
     } catch (err) {
-      if (err instanceof CustomError) {
-        response.status(err.status).json({ message: err.message });
-      }
+      console.error('Error al obtener materias:', err);
+      return response.status(500).json({ message: 'Error interno del servidor al obtener las materias.' });
     }
   }
 
