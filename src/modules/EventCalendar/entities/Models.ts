@@ -7,6 +7,7 @@ export interface IEventCalendar extends Document {
   end: Date;
   backgroundColor: string;
   textColor: string;
+  idHorario: string;
   materia: mongoose.Types.ObjectId;
   profesor: mongoose.Types.ObjectId;
   salon: mongoose.Types.ObjectId;
@@ -42,6 +43,7 @@ interface IProfesor extends Document {
   numeroTelefono?: string;
   tituloAcademico?: string;
   tipo?: string;
+  idHorario?: string;
   materias: Types.Array<Types.ObjectId | IMateria>;
   ocupacion: RangoHorario[];
   salario?: number;
@@ -101,6 +103,10 @@ const EventCalendarSchema = new mongoose.Schema<IEventCalendar>(
     textColor: {
       type: String,
       required: true,
+    },
+    idHorario: {
+      type: String,
+      required: false,
     },
     materia: { type: mongoose.Schema.Types.ObjectId, ref: 'Materia', required: true },
     profesor: { type: mongoose.Schema.Types.ObjectId, ref: 'Profesor', required: true },

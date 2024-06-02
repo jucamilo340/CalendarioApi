@@ -17,7 +17,7 @@ interface Individuo {
 }
 
 // Función de inicialización de población
-async function inicializarPoblacion(tamanoPoblacion: number, jornada:string): Individuo[] {
+async function inicializarPoblacion(tamanoPoblacion: number, jornada:string): Promise<Individuo[]> {
   const poblacionPromesas: Individuo[] = [];
   // Lógica para generar individuos aleatorios
   for (let i = 0; i < tamanoPoblacion; i++) {
@@ -35,7 +35,7 @@ async function inicializarPoblacion(tamanoPoblacion: number, jornada:string): In
 }
 
 // // Función de mutación
-async function mutar(individuo: Individuo): Individuo {
+async function mutar(individuo: Individuo): Promise<Individuo> {
   // Lógica para introducir cambios aleatorios en el individuo
   // Ejemplo: cambiar el profesor, el salón o el horario de un evento
   // Clonar el individuo para no modificar el original directamente
@@ -208,7 +208,7 @@ export async function generarEventosAleatoriosSemana(jornada: any) {
       let duracionEvento: number = Math.floor(horasSemanalesMateria / (materiaAleatoria.sesiones - i));
       horasSemanalesMateria -= duracionEvento;
       while (!profesorAsignado) {
-        horaInicio = generarHorarioAleatorio(duracionEvento, jornada);  // Ajusta según tus necesidades
+        horaInicio = generarHorarioAleatorio(duracionEvento, jornada);
         horaFin = moment(horaInicio).add(duracionEvento, 'hours').format("YYYY-MM-DDTHH:mm:ssZ");
         horarioC = convertirFormatoHorario({inicio:horaInicio, fin: horaFin});
         profesorAsignado = await obtenerProfesorAsignado(profesorP?._id,horarioC);
