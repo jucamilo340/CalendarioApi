@@ -6,9 +6,12 @@ export class MateriaController {
 
   async getAll(request: Request, response: Response) {
     try {
-      const { semestre } = request.body;
-      console.log(request.body);
-      const materias = await MateriaModel.find({ semestre: semestre });
+      const { semestre } = request.query;
+      const filter: any = {};
+      if (semestre) {
+          filter.nivel = semestre;
+      }
+      const materias = await MateriaModel.find(filter);
       return response.status(200).json(materias);
     } catch (err) {
       console.error('Error al obtener materias:', err);

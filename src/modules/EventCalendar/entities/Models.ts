@@ -109,8 +109,8 @@ const EventCalendarSchema = new mongoose.Schema<IEventCalendar>(
       required: false,
     },
     materia: { type: mongoose.Schema.Types.ObjectId, ref: 'Materia', required: true },
-    profesor: { type: mongoose.Schema.Types.ObjectId, ref: 'Profesor', required: true },
-    salon: { type: mongoose.Schema.Types.ObjectId, ref: 'Salon', required: true },
+    profesor: { type: mongoose.Schema.Types.ObjectId, ref: 'Profesor', required: false },
+    salon: { type: mongoose.Schema.Types.ObjectId, ref: 'Salon', required: false },
     grupo: { type: mongoose.Schema.Types.ObjectId, ref: 'Grupo', required: true },
   },
   {

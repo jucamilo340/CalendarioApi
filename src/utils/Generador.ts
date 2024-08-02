@@ -146,8 +146,8 @@ const penalizacionarCruces = (eventosOrdenados:any) => {
   return penalizacionCruces;
 }
 //Algoritmo genético principal
-export async function algoritmoGenetico(tamanoPoblacion: number, numGeneraciones: number, jornada:string) {
-  let poblacion:any = await inicializarPoblacion(tamanoPoblacion, jornada);
+export async function algoritmoGenetico(tamanoPoblacion: number, numGeneraciones: number, grupo:any) {
+  let poblacion:any = await inicializarPoblacion(tamanoPoblacion, grupo);
   for (let generacion = 0; generacion < numGeneraciones; generacion++) {
     poblacion = await Promise.all(poblacion.map(async (individuo:any) => {
       return {individuo, aptitud: await calcularAptitud(individuo)}
@@ -163,71 +163,65 @@ export async function algoritmoGenetico(tamanoPoblacion: number, numGeneraciones
   return poblacion[0].eventos;
 }
 
-async function obtenerProfesorAsignadoPorTipo(profesores: any[], duracionEvento: any, eventosSemana:any[]) {
-  for (const profesor of profesores) {
-    const horasAsignadas = await obtenerHorasAsignadasPorProfesor(profesor._id);
-    const eventosSemanaHoras = obtenerHorasAsignadasEnEventosSemana(profesor._id, eventosSemana);
-    //const horasMinimas = tipo === 'catedratico' ? 8 : 12;
-    const horasMaximas = profesor.tipo === 'catedratico' ? 12 : 16;
-    if (horasAsignadas + duracionEvento + eventosSemanaHoras <= horasMaximas) {
-      return profesor;
-    }else {
-      console.log(profesor.nombre, 'Supero las horas', horasAsignadas +eventosSemanaHoras);
-    }
-  }
-  return null;
-}
-
 // Función para generar eventos aleatorios con restricciones para toda la semana
-export async function generarEventosAleatoriosSemana(jornada: any) {
+export async function generarEventosAleatoriosSemana(grupo: any) {
   const eventosSemana: Evento[] = [];
-  const materias = await MateriaModel.find({});
-  
+  const jornada = grupo.diurno ? 'diurna' : 'nocturna';
+  const materias = await MateriaModel.find({nivel: grupo.semestre});
+
   for (const materiaAleatoria of materias) {
     const profesoresDisponibles = await obtenerProfesorDisponible2(materiaAleatoria._id);
     let profesorP = null;
     let horasSemanalesMateria = materiaAleatoria.horasSemanales;
+
     for (const profesor of profesoresDisponibles) {
-        const horasAsignadas = await obtenerHorasAsignadasPorProfesor(profesor?._id);
-        const eventosSemanaHoras = obtenerHorasAsignadasEnEventosSemana(profesor._id, eventosSemana);
-        if (horasAsignadas + eventosSemanaHoras < 16) {
-          profesorP = profesor;
-          break;
-        } else {
-          continue;
-        }
+      const horasAsignadas = await obtenerHorasAsignadasPorProfesor(profesor?._id);
+      const eventosSemanaHoras = obtenerHorasAsignadasEnEventosSemana(profesor._id, eventosSemana);
+      if (horasAsignadas + eventosSemanaHoras < 16) {
+        profesorP = profesor;
+        break;
+      } else {
+        continue;
+      }
     }
-    if(!profesorP){
-      continue;
-    }
+
     for (let i = 0; i < materiaAleatoria.sesiones; i++) {
       let profesorAsignado = null;
+      let salonDisponible = null;
       let horaInicio;
       let horaFin;
       let horarioC;
       let duracionEvento: number = Math.floor(horasSemanalesMateria / (materiaAleatoria.sesiones - i));
       horasSemanalesMateria -= duracionEvento;
-      while (!profesorAsignado) {
-        horaInicio = generarHorarioAleatorio(duracionEvento, jornada);
-        horaFin = moment(horaInicio).add(duracionEvento, 'hours').format("YYYY-MM-DDTHH:mm:ssZ");
-        horarioC = convertirFormatoHorario({inicio:horaInicio, fin: horaFin});
-        profesorAsignado = await obtenerProfesorAsignado(profesorP?._id,horarioC);
+
+      // Generar el horario para el evento
+      horaInicio = generarHorarioAleatorio(duracionEvento, jornada);
+      horaFin = moment(horaInicio).add(duracionEvento, 'hours').format("YYYY-MM-DDTHH:mm:ssZ");
+      horarioC = convertirFormatoHorario({inicio: horaInicio, fin: horaFin});
+
+      // Intentar asignar profesor si hay alguno disponible
+      if (profesorP) {
+        profesorAsignado = await obtenerProfesorAsignado(profesorP?._id, horarioC);
       }
-      const salonDisponible = await obtenerSalonDisponible(horarioC, materiaAleatoria.tipoSalon);
+
+      // Intentar asignar salón si hay alguno disponible
+      salonDisponible = await obtenerSalonDisponible(horarioC, materiaAleatoria.tipoSalon);
+
       const evento: any = {
-        materia: materiaAleatoria?._id,
-        profesor: profesorAsignado?._id,
-        salon: salonDisponible?._id,
+        materia: materiaAleatoria,
+        profesor: profesorAsignado || null,
+        salon: salonDisponible?._id || null,
         horaInicio: horaInicio,
         horaFin: horaFin,
-        materiaNombre:materiaAleatoria.nombre,
-        tipoSalon:materiaAleatoria.tipoSalon,
-        idHorario: materiaAleatoria?._id+':'+profesorAsignado?._id
-      }
+        materiaNombre: materiaAleatoria.nombre,
+        tipoSalon: materiaAleatoria.tipoSalon,
+        idHorario: materiaAleatoria?._id + ':' + (profesorAsignado?._id || 'null')
+      };
+
       eventosSemana.push(evento);
     }
   }
-return eventosSemana;
+  return eventosSemana;
 }
 
 // Función para generar un horario aleatorio entre las 7 am y las 10 pm
@@ -243,28 +237,23 @@ function generarHorarioAleatorio(duracion:any, tipo:any) {
     // Genera una hora aleatoria según el tipo
     let horaAleatoria:any;
     if (tipo === 'diurna') {
-      horaAleatoria = Math.floor(Math.random() * 11) + 7; // Entre las 7am y las 6pm
+      horaAleatoria = Math.floor(Math.random() * 11) + 7; 
     } else if (tipo === 'nocturna') {
-      horaAleatoria = Math.floor(Math.random() * 5) + 18; // Entre las 6pm y las 10pm
+      horaAleatoria = Math.floor(Math.random() * 5) + 18;
     } else if (tipo === 'mixta') {
-      horaAleatoria = Math.floor(Math.random() * 15) + 7; // Entre las 7am y las 10pm
+      horaAleatoria = Math.floor(Math.random() * 15) + 7;
     }
     // Establece la hora en punto
     fechaElegida.set('hour', horaAleatoria);
-    fechaElegida.set('minute', 0);  // Establece los minutos en 0 para que sea una hora en punto
-    // Calcula la hora de finalización sumando la duración
+    fechaElegida.set('minute', 0);
     const horaFin = moment(fechaElegida).add(duracion, 'hours');
-    //const horaFin = fechaElegida.clone().add(duracion, 'hours');
-    // Verifica si la hora de finalización está dentro del rango permitido
     if (
       (tipo === 'diurna' && horaFin.isBefore(moment('18:00', 'HH:mm'))) ||
       (tipo === 'nocturna' && horaFin.isBefore(moment('22:00', 'HH:mm'))) ||
       (tipo === 'mixta' && horaFin.isBefore(moment('22:00', 'HH:mm')))
     ) {
-      // Formatea la fecha en el formato deseado
       horarioAleatorio = fechaElegida.format();
     }
-    // Si la hora de finalización excede el rango permitido, se repetirá el proceso
   } while (!horarioAleatorio);
   return horarioAleatorio;
 }
@@ -273,7 +262,7 @@ function generarHorarioAleatorio(duracion:any, tipo:any) {
 async function obtenerProfesorDisponible2(materia: string) {
   const filter: any = {};
   filter.materias = materia;
-  const profesoresDisponibles = await ProfesorModel.find(filter).exec();
+  const profesoresDisponibles = await ProfesorModel.find(filter);
   if (profesoresDisponibles.length === 0) {
     return [];
   }
@@ -287,21 +276,21 @@ async function obtenerProfesorDisponible2(materia: string) {
   return profesoresDisponibles;
 }
 
-export async function obtenerProfesorAsignado(profesorId: string, horarioC:any) {
-  const filter: any = {};
-  filter._id = profesorId;
-  filter.ocupacion = {
-    $not: {
-      $elemMatch: {
-        dia: horarioC.dia,
-        inicio: { $lt: horarioC.fin },
-        fin: { $gt: horarioC.inicio }
+async function obtenerProfesorAsignado(profesorId: string, horarioC: any) {
+  const filter: any = {
+    _id: profesorId,
+    ocupacion: {
+      $not: {
+        $elemMatch: {
+          dia: horarioC.dia,
+          inicio: { $lt: horarioC.fin },
+          fin: { $gt: horarioC.inicio }
+        }
       }
     }
-  }
-  // Obtener todos los profesores que cumplen con los criterios
-  const profesoresDisponible = await ProfesorModel.findOne(filter).exec();
-  return profesoresDisponible;
+  };
+  const profesorAsignado = await ProfesorModel.findOne(filter).exec();
+  return profesorAsignado;
 }
 
 // Función para obtener un profesor disponible aleatorio
@@ -328,30 +317,24 @@ async function obtenerProfesorDisponible(horarioC: any, materia: string) {
   return profesorSeleccionado;
 }
 // Función para obtener un salón disponible aleatorio
-async function obtenerSalonDisponible(horarioC: any, tipoSalon:string) {
-  const filter: any = {};
-  filter.tipo = tipoSalon;
-  filter.ocupacion = {
-    $not: {
-      $elemMatch: {
-        dia: horarioC.dia,
-        inicio: { $lt: horarioC.fin },
-        fin: { $gt: horarioC.inicio }
+async function obtenerSalonDisponible(horarioC: any, tipoSalon: string) {
+  const filter: any = {
+    tipo: tipoSalon,
+    ocupacion: {
+      $not: {
+        $elemMatch: {
+          dia: horarioC.dia,
+          inicio: { $lt: horarioC.fin },
+          fin: { $gt: horarioC.inicio }
+        }
       }
     }
-  }
-  // Obtener todos los salones que cumplen con los criterios
-  const salonesDisponibles = await SalonModel.find(filter).exec();
-  if (salonesDisponibles.length === 0) {
-    // No hay salones disponibles
-    return null;
-  }
-  // Seleccionar aleatoriamente un salón de la lista
-  const salonSeleccionado = salonesDisponibles[Math.floor(Math.random() * salonesDisponibles.length)];
-  return salonSeleccionado;
+  };
+  const salonDisponible = await SalonModel.findOne(filter).exec();
+  return salonDisponible;
 }
 
-export const crearEventos = async (jornada:any) => {
-  const eventosGenerados = await algoritmoGenetico(100, 500, jornada ? 'diurna' : 'nocturna');
-  return eventosGenerados
+export const crearEventos = async (grupo:any) => {
+  const eventosGenerados = await algoritmoGenetico(100, 500, grupo);
+  return eventosGenerados;
 }

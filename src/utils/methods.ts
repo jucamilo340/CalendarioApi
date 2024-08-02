@@ -81,7 +81,6 @@ export async function verificarHorasProfesor(profesorId: string): Promise<void> 
     throw error;
   }
 }
-
 export async function obtenerHorasAsignadasPorProfesor(profesorId: string): Promise<number> {
   try {
     // Obtener eventos asignados al profesor
@@ -124,8 +123,8 @@ function calcularDiferenciaHoras(start: Date, end: Date): number {
 }
 
 export function obtenerHorasAsignadasEnEventosSemana(profesorId: string, eventosSemana: any) {
-  return eventosSemana.reduce((totalHoras:any, evento:any) => {
-    if (evento.profesor.equals(profesorId)) {
+  return eventosSemana.reduce((totalHoras: any, evento: any) => {
+    if (evento.profesor && evento.profesor.equals(profesorId)) {
       const duracionEvento = moment(evento.horaFin).diff(evento.horaInicio, 'hours');
       return totalHoras + duracionEvento;
     }
