@@ -31,9 +31,16 @@ export interface IGrupo extends Document {
   nombre: string;
   semestre: number;
   cantidad: number;
+  plan: mongoose.Types.ObjectId;
   diurno: false;
 }
 
+export interface IPlan extends Document {
+  nombre: string;
+  semestres: number;
+  cantidad: number;
+  horario: string;
+}
 
 
 interface IProfesor extends Document {
@@ -137,7 +144,14 @@ const GrupoSchema = new mongoose.Schema<IGrupo>({
   nombre: { type: String, required: true },
   semestre: { type: Number, required: true },
   cantidad: { type: Number, required: true },
+  plan: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan', required: true },
   diurno: { type: Boolean, required: true },
+});
+
+const PlanSchema = new mongoose.Schema<IPlan>({
+  nombre: { type: String, required: true },
+  semestres: { type: Number, required: true },
+  horario: { type: String, required: true },
 });
 
 // const RangoHorarioSchema = new mongoose.Schema({
@@ -191,10 +205,12 @@ const ProfesorModel = mongoose.model<IProfesor>('Profesor', ProfesorSchema);
 const SalonModel = mongoose.model<ISalon>('Salon', SalonSchema);
 const GrupoModel = mongoose.model<IGrupo>('Grupo', GrupoSchema);
 const ClaseModel = mongoose.model<IClase>('Clase', ClaseSchema);
+const PlanModel = mongoose.model<IPlan>('Plan', PlanSchema);
 
 export {
   EventCalendarModel,
   SalonModel,
+  PlanModel,
   GrupoModel,
   ClaseModel,
   ProfesorModel,
