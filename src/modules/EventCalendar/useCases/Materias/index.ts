@@ -7,10 +7,14 @@ export class MateriaController {
   async getAll(request: Request, response: Response) {
     try {
       const { semestre } = request.query;
+      const { plan } = request.query;
       const filter: any = {};
       if (semestre) {
           filter.nivel = semestre;
       }
+      if (plan) {
+        filter.plan = plan;
+    }
       const materias = await MateriaModel.find(filter);
       return response.status(200).json(materias);
     } catch (err) {

@@ -25,6 +25,7 @@ export interface IMateria extends Document {
   horasSemanales: number
   credits: number;
   requerimientos: Types.Array<Types.ObjectId | IMateria>;
+  plan: mongoose.Types.ObjectId;
 }
 
 export interface IGrupo extends Document {
@@ -68,6 +69,7 @@ export interface RangoHorarioO {
   inicio: string;
   fin: string;
   nombre: string;
+  nombreClase: string;
   idEvent: string
 }
 
@@ -138,6 +140,7 @@ const MateriaSchema = new mongoose.Schema<IMateria>({
   horasSemanales: { type: Number, required: true },
   credits: { type: Number, required: true },
   requerimientos: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Materia', required: true }],
+  plan: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan', required: true },
 });
 
 const GrupoSchema = new mongoose.Schema<IGrupo>({
@@ -165,6 +168,7 @@ const RangoHorarioOSchema = new mongoose.Schema({
   inicio: { type: String, required: true },
   fin: { type: String, required: true },
   nombre: { type: String, required: false },
+  nombreClase: { type: String, required: false },
   idEvent: { type: mongoose.Schema.Types.ObjectId, ref: 'EventCalendar', required: true },
 });
 

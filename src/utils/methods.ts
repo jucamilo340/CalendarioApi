@@ -146,3 +146,23 @@ export async function verificarMateriasAsignadas(): Promise<string[]> {
   }
   return [];
 }
+
+
+export function areObjectsEqual(obj1, obj2) {
+  // Primero, verifica que tengan el mismo número de propiedades
+  const keys1 = Object.keys(obj1);
+  const keys2 = Object.keys(obj2);
+
+  if (keys1.length !== keys2.length) {
+      return false;
+  }
+
+  // Luego, compara los valores de cada propiedad
+  for (let key of keys1) {
+      if (obj1[key] !== obj2[key]) {
+          return false; // Son diferentes
+      }
+  }
+
+  return true; // Son iguales
+}

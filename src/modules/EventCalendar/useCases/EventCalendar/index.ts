@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { CustomError } from "../../../../shared/errors/CustomError";
 import {EventCalendarModel, GrupoModel, MateriaModel, ProfesorModel, SalonModel} from "../../entities/Models";
-import { calcularDuracionEvento, convertirFormatoHorario, convertirFormatoHorarioReverso, verificarMateriasAsignadas } from "../../../../utils/methods";
+import { areArraysDifferent, areObjectsEqual, calcularDuracionEvento, convertirFormatoHorario, convertirFormatoHorarioReverso, verificarMateriasAsignadas } from "../../../../utils/methods";
 import { ObjectId } from 'mongodb';
 import { crearEventos } from "../../../../utils/Generador";
 import moment from "moment-timezone";
@@ -77,9 +77,12 @@ export class EventCalendarController {
       if (duracionEvento <= 0) throw new CustomError("Cantidad de Horas maximas en esta Asignatura", 400);
       const nuevaHoraFinal= moment(eventCalendar.start).add(duracionEvento, 'hours').format("YYYY-MM-DDTHH:mm:ssZ");
       eventCalendar.end = nuevaHoraFinal;
+      eventCalendar.idHorario =  eventCalendar?.materia + eventCalendar.profesor + eventCalendar.grupo;
       const eventCalendarData = await new EventCalendarModel(eventCalendar).save();
       if (!eventCalendar) throw new CustomError("Internal server error", 400);
       const nuevaOcupacion = convertirFormatoHorario({inicio:eventCalendar.start, fin: nuevaHoraFinal});
+      const materia = await MateriaModel.findOne({_id: eventCalendar?.materia});
+      nuevaOcupacion?.nombreClase = materia?.nombre;
       nuevaOcupacion?.idEvent = eventCalendarData._id;
       await ProfesorModel.findOneAndUpdate(
           { _id: eventCalendar?.profesor },
@@ -134,7 +137,9 @@ export class EventCalendarController {
         });
           const eventosGenerados:any = await EventCalendarModel.insertMany(eventosG);
           await eventosGenerados.map(async (g:any)=>{
+            const materia = await MateriaModel.findOne({_id: g?.materia});
             const nuevaOcupacion: any = convertirFormatoHorario({inicio:g.start, fin: g.end});
+            nuevaOcupacion.nombreClase = materia?.nombre;
             nuevaOcupacion?.idEvent = g._id;
             await ProfesorModel.findOneAndUpdate(
                 { _id: g?.profesor },
@@ -227,16 +232,14 @@ export class EventCalendarController {
           throw new Error('No se encontraron eventos con el idHorario proporcionado.');
         }
         const { _id, ...valoresActualizados } = eventCalendar;
+        const newSalon = valoresActualizados?.salon;
+        delete valoresActualizados?.salon;
         for (const evento of eventos) {
           try {
             const nuevaOcupacion = convertirFormatoHorario({inicio:evento.start, fin: evento.end});
             const idExist = new ObjectId(evento._id);
             await ProfesorModel.updateOne(
               { _id: evento.profesor },
-              { $pull: { ocupacion: { idEvent: idExist } } },
-            );
-            await SalonModel.updateOne(
-              { _id: evento.salon },
               { $pull: { ocupacion: { idEvent: idExist } } },
             );
              await EventCalendarModel.findOneAndUpdate(
@@ -249,13 +252,27 @@ export class EventCalendarController {
              { _id: valoresActualizados?.profesor },
              { $push: { ocupacion: nuevaOcupacion } },
            );
-           await SalonModel.updateOne(
-             { _id: valoresActualizados?.salon },
-             { $push: { ocupacion: nuevaOcupacion } });
+          //  await SalonModel.updateOne(
+          //    { _id: valoresActualizados?.salon },
+          //    { $push: { ocupacion: nuevaOcupacion } });
           } catch (error) {
             console.log(error);
           }
-        }
+        } 
+        const evento = await EventCalendarModel.find({ _id: _id });
+        const nuevaOcupacionSalon = convertirFormatoHorario({inicio:evento[0]?.start, fin: evento[0]?.end});
+        nuevaOcupacionSalon?.idEvent = _id;
+        await EventCalendarModel.updateOne(
+          { _id: _id },
+          { $set: { salon: newSalon} }
+        );
+        await SalonModel.updateOne(
+           { _id: evento[0]?.salon},
+            { $pull: { ocupacion: { idEvent: _id } } },
+          );
+          await SalonModel.updateOne(
+              { _id: newSalon },
+              { $push: { ocupacion: nuevaOcupacionSalon } });
           //await verificarDisponibilidadProfesor(eventCalendarExist?.profesor,{inicio:eventCalendar.start, fin: eventCalendar.end});
           return response.status(201).json(eventCalendar);
     } catch (err) {
@@ -284,8 +301,16 @@ export class EventCalendarController {
         inicio: eventCalendar.start,
         fin: eventCalendar.end
       });
+      const OcupacionOld = convertirFormatoHorario({
+        inicio: eventCalendarExist.start,
+        fin: eventCalendarExist.end
+      });
+      if(areObjectsEqual(OcupacionOld, nuevaOcupacion)){
+        return;
+      }
+      const materia = await MateriaModel.findOne({_id: eventCalendarExist?.materia});
+      nuevaOcupacion.nombreClase = materia?.nombre;
       nuevaOcupacion.idEvent = eventCalendarExist._id;
-  
       // Verificar conflictos de ocupación del profesor
       const profesorOcupacionConflicto = await ProfesorModel.findOne({
         _id: eventCalendarExist.profesor,
@@ -311,7 +336,7 @@ export class EventCalendarController {
             dia: nuevaOcupacion.dia,
             inicio: { $lt: nuevaOcupacion.fin },
             fin: { $gt: nuevaOcupacion.inicio },
-            idEvent: { $ne: eventCalendarExist._id } // Excluir la ocupación del evento actual
+            idEvent: { $ne: eventCalendarExist._id }
           }
         }
       });
