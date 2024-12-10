@@ -16,7 +16,7 @@
   },
   "scripts": {
     "dev": "ts-node-dev --inspect --transpile-only --ignore-watch node_modules --respawn src/shared/server.ts",
-    "build": "tsc",
+    "build": "tsc --skipLibCheck --noEmit false",
     "start": "ts-node --transpile-only src/shared/server.ts",
     "test": "jest"
   },
