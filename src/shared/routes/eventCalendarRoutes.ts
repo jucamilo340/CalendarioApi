@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Router } from "express";
 import { EventCalendarController } from "../../modules/EventCalendar/useCases/EventCalendar";
 

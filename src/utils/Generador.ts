@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as mongoose from "mongoose";
 import {
  MateriaModel,

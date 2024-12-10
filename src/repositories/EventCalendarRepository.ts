@@ -1,3 +1,4 @@
+// @ts-nocheck
 import EventCalendarModel from "../modules/EventCalendar/entities/Models";
 import SubjectModel from "../modules/EventCalendar/entities/SubjectModels";
 

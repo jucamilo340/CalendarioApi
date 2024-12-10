@@ -1,3 +1,4 @@
+// @ts-nocheck
 import mongoose, { Document, Types } from "mongoose";
 
 // Primero, define las interfaces

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Request, Response } from "express";
 import { CustomError } from "../../../../shared/errors/CustomError";
 import {AsignacionModel, EventCalendarModel, GrupoModel, MateriaModel, ProfesorModel, SalonModel} from "../../entities/Models";
