@@ -21,7 +21,6 @@ export class SalonController {
         //     fin: { $gte: horarioC.fin }
         //   }
         // };
-        console.log('horarioC', horario);
         filter.ocupacion = {
           $not: {
             $elemMatch: {
@@ -34,7 +33,6 @@ export class SalonController {
         }
       }
       const salones = await SalonModel.find(filter);
-      console.log(salones[0])
       if (!salones) {
         return [];
       }

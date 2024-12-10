@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { CustomError } from "../../../../shared/errors/CustomError";
-import { MateriaModel } from "../../entities/Models";
+import { AsignacionModel, MateriaModel } from "../../entities/Models";
 
 export class MateriaController {
 
@@ -46,7 +46,7 @@ export class MateriaController {
 
         const materiaExist = await MateriaModel.findOne({ _id: id });
         if (!materiaExist) throw new CustomError("Materia not exist", 404);
-
+        await AsignacionModel.deleteMany({ materia: id });
         const deleteMateria = await MateriaModel.deleteOne({ _id: id });
         return response.status(200).json(deleteMateria);
     } catch (err) {

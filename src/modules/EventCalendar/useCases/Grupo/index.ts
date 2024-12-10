@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { CustomError } from "../../../../shared/errors/CustomError";
-import { GrupoModel } from "../../entities/Models"; // Assuming you have a GrupoModel
+import { AsignacionModel, GrupoModel } from "../../entities/Models"; // Assuming you have a GrupoModel
+import { AsignacionService } from "../../../../utils/methods";
 
 export class GrupoController {
 
@@ -25,7 +26,7 @@ export class GrupoController {
 
       const grupoData = await new GrupoModel(grupo).save();
       if (!grupoData) throw new CustomError("Internal server error", 500);
-
+      AsignacionService(grupoData._id);
       return response.status(201).json(grupoData);
     } catch (err) {
       if (err instanceof CustomError) {
@@ -80,4 +81,29 @@ export class GrupoController {
       }
     }
   }
+
+  async obtenerAsignacionesPorGrupo(request: Request, response: Response) {
+    try {
+      const { id } = request.params;
+  
+      if (!id) {
+        return response.status(400).json({ message: "El ID del grupo es requerido" });
+      }
+  
+      const asignaciones = await AsignacionModel.find({ grupo: id })
+        .populate("materia") // Opcional: Poblamos los datos relacionados con materia
+        .populate("profesor") // Opcional: Poblamos los datos relacionados con profesor
+        .populate("grupo"); // Opcional: Poblamos los datos relacionados con grupo
+  
+      if (!asignaciones || asignaciones.length === 0) {
+        return response.status(200).json([]);
+      }
+  
+      return response.status(200).json(asignaciones);
+    } catch (err) {
+      console.error("Error al obtener asignaciones por grupo:", err);
+      return response.status(500).json({ message: "Error interno del servidor" });
+    }
+  }
+  
 }

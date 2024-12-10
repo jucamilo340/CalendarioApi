@@ -19,6 +19,7 @@ export interface IEventCalendar extends Document {
 export interface IMateria extends Document {
   nombre: string;
   tipo: string;
+  codigo: string;
   tipoSalon: string;
   sesiones: number;
   nivel: number;
@@ -30,6 +31,7 @@ export interface IMateria extends Document {
 
 export interface IGrupo extends Document {
   nombre: string;
+  codigo: string;
   semestre: number;
   cantidad: number;
   plan: mongoose.Types.ObjectId;
@@ -46,6 +48,7 @@ export interface IPlan extends Document {
 
 interface IProfesor extends Document {
   nombre: string;
+  cedula: number;
   fechaNacimiento?: Date;
   correoElectronico?: string;
   numeroTelefono?: string;
@@ -76,6 +79,7 @@ export interface RangoHorarioO {
 export interface ISalon extends Document {
   nombre: string;
   tipo: string;
+  codigo: string;
   facultad: string;
   capacidad: number;
   disponibilidad: RangoHorario[];
@@ -85,9 +89,16 @@ export interface ISalon extends Document {
 export interface IClase extends Document {
   materia: mongoose.Types.ObjectId;
   profesor: mongoose.Types.ObjectId;
+  codigo: string;
   salon: mongoose.Types.ObjectId;
   horaInicio: string;
   horaFin: string;
+}
+
+export interface IAsignacion extends Document {
+  materia: mongoose.Types.ObjectId;
+  profesor: mongoose.Types.ObjectId;
+  grupo: mongoose.Types.ObjectId;
 }
 
 // Luego, define los esquemas
@@ -135,6 +146,7 @@ const MateriaSchema = new mongoose.Schema<IMateria>({
   nombre: { type: String, required: true },
   sesiones: { type: Number, required: true },
   tipo: { type: String, required: true },
+  codigo: { type: String, required: true },
   tipoSalon: { type: String, required: true },
   nivel: { type: Number, required: true },
   horasSemanales: { type: Number, required: true },
@@ -176,6 +188,7 @@ const RangoHorarioOSchema = new mongoose.Schema({
 const ProfesorSchema = new mongoose.Schema<IProfesor>({
   nombre: { type: String, required: true },
   fechaNacimiento: { type: Date },
+  cedula: { type: Number, required: true },
   correoElectronico: { type: String },
   numeroTelefono: { type: String },
   tituloAcademico: { type: String },
@@ -189,6 +202,7 @@ const ProfesorSchema = new mongoose.Schema<IProfesor>({
 const SalonSchema = new mongoose.Schema<ISalon>({
   nombre: { type: String, required: true },
   tipo: { type: String, required: true },
+  codigo: { type: String, required: false },
   facultad: { type: String, required: true },
   capacidad: { type: Number, required: true },
   ocupacion: { type: [RangoHorarioOSchema], required: true },
@@ -202,6 +216,12 @@ const ClaseSchema = new mongoose.Schema<IClase>({
   horaFin: { type: String, required: true },
 });
 
+const AsignacionSchema = new mongoose.Schema<IAsignacion>({
+  materia: { type: mongoose.Schema.Types.ObjectId, ref: 'Materia', required: true },
+  profesor: { type: mongoose.Schema.Types.ObjectId, ref: 'Profesor', required: false },
+  grupo: { type: mongoose.Schema.Types.ObjectId, ref: 'Grupo', required: true },
+});
+
 // Finalmente, define los modelos
 const EventCalendarModel = mongoose.model<IEventCalendar>("EventCalendar", EventCalendarSchema);
 const MateriaModel = mongoose.model<IMateria>('Materia', MateriaSchema);
@@ -210,12 +230,14 @@ const SalonModel = mongoose.model<ISalon>('Salon', SalonSchema);
 const GrupoModel = mongoose.model<IGrupo>('Grupo', GrupoSchema);
 const ClaseModel = mongoose.model<IClase>('Clase', ClaseSchema);
 const PlanModel = mongoose.model<IPlan>('Plan', PlanSchema);
+const AsignacionModel = mongoose.model<IPlan>('Asignacion', AsignacionSchema);
 
 export {
   EventCalendarModel,
   SalonModel,
   PlanModel,
   GrupoModel,
+  AsignacionModel,
   ClaseModel,
   ProfesorModel,
   MateriaModel,

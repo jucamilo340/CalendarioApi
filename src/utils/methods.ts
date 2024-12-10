@@ -1,5 +1,6 @@
 import moment from 'moment-timezone';
-import { EventCalendarModel, MateriaModel, ProfesorModel } from '../modules/EventCalendar/entities/Models';
+import { AsignacionModel, EventCalendarModel, GrupoModel, MateriaModel, ProfesorModel } from '../modules/EventCalendar/entities/Models';
+import { CustomError } from '../shared/errors/CustomError';
 
 interface HorarioEntrada {
   inicio: string;
@@ -165,4 +166,35 @@ export function areObjectsEqual(obj1, obj2) {
   }
 
   return true; // Son iguales
+}
+
+export async function AsignacionService(grupoId: string) {
+    try {
+      // Verificar si el grupo existe
+      const grupo = await GrupoModel.findById(grupoId);
+      if (!grupo) {
+        throw new CustomError("Grupo no encontrado", 404);
+      }
+
+      const { semestre, plan } = grupo;
+
+      // Obtener todas las materias del plan y semestre del grupo
+      const materias = await MateriaModel.find({ nivel: semestre, plan });
+      if (materias.length === 0) {
+        throw new CustomError("No se encontraron materias para el plan y semestre especificados", 404);
+      }
+
+      // Crear asignaciones para cada materia
+      const asignaciones = materias.map((materia) => ({
+        materia: materia._id,
+        profesor: null, // Campo profesor nulo
+        grupo: grupo._id,
+      }));
+
+      // Insertar las asignaciones en la base de datos
+      await AsignacionModel.insertMany(asignaciones);
+    } catch (err) {
+      console.error("Error al crear asignaciones:", err);
+      throw err;
+    }
 }

@@ -53,7 +53,10 @@ export class ProfesorController {
     try {
       const { profesor = null } = request.body;
       if (!profesor) throw new CustomError("Profesor not found", 400);
-
+      const existingProfesor = await ProfesorModel.findOne({ cedula: profesor.cedula });
+    if (existingProfesor) {
+      throw new CustomError("Profesor ya registrado con esta cedula", 409);
+    }
       const profesorData = await new ProfesorModel(profesor).save();
       if (!profesorData) throw new CustomError("Internal server error", 500);
 

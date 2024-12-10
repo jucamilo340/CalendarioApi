@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import { CustomError } from "../../../../shared/errors/CustomError";
-import {EventCalendarModel, GrupoModel, MateriaModel, ProfesorModel, SalonModel} from "../../entities/Models";
+import {AsignacionModel, EventCalendarModel, GrupoModel, MateriaModel, ProfesorModel, SalonModel} from "../../entities/Models";
 import { areArraysDifferent, areObjectsEqual, calcularDuracionEvento, convertirFormatoHorario, convertirFormatoHorarioReverso, verificarMateriasAsignadas } from "../../../../utils/methods";
 import { ObjectId } from 'mongodb';
 import { crearEventos } from "../../../../utils/Generador";
 import moment from "moment-timezone";
+import { borrarTodosLosDatos, procesarExcel } from "../../../../utils/CrearEntitdades";
 
 export class EventCalendarController {
 
@@ -103,6 +104,28 @@ export class EventCalendarController {
   }
   async generarHorario(request: Request, response: Response) {
     const { id } = request.params;
+    const { accion } = request.body;
+    console.log(request.body);
+    if(accion === 'crear') {
+      try {
+        await procesarExcel();
+        return response.status(200).json({ message: "Horario generado" });
+      } catch (error) {
+        if (error instanceof CustomError) {
+          return response.status(error.status).json({ message: error.message });
+        }
+      }
+    }
+    if(accion === 'borrar') {
+      try {
+        await borrarTodosLosDatos();
+        return response.status(200).json({ message: "Horario generado" });
+      } catch (error) {
+        if (error instanceof CustomError) {
+          return response.status(error.status).json({ message: error.message });
+        }
+      }
+    }
     try {
         if (!id) throw new CustomError("Id not found", 400);
         const objectId = new ObjectId(id);
@@ -252,6 +275,7 @@ export class EventCalendarController {
              { _id: valoresActualizados?.profesor },
              { $push: { ocupacion: nuevaOcupacion } },
            );
+          
           //  await SalonModel.updateOne(
           //    { _id: valoresActualizados?.salon },
           //    { $push: { ocupacion: nuevaOcupacion } });
@@ -259,6 +283,11 @@ export class EventCalendarController {
             console.log(error);
           }
         } 
+        const newAsignacion = {
+          grupo: eventCalendar.grupo,
+          materia: eventCalendar.materia,
+          profesor: eventCalendar.profesor,
+        }
         const evento = await EventCalendarModel.find({ _id: _id });
         const nuevaOcupacionSalon = convertirFormatoHorario({inicio:evento[0]?.start, fin: evento[0]?.end});
         nuevaOcupacionSalon?.idEvent = _id;

@@ -4,6 +4,7 @@ import {
  ProfesorModel,
  SalonModel,
  EventCalendarModel,
+ AsignacionModel,
 } from "../modules/EventCalendar/entities/Models";
 import moment from "moment-timezone";
 import {
@@ -169,23 +170,27 @@ async function mutar(individuo: Individuo, grupo: any): Promise<Individuo> {
 
 // Función de cruce mejorada (Order Crossover)
 function cruzar(padre1: Individuo, padre2: Individuo): Individuo {
- const size = padre1.eventos.length;
- const start = Math.floor(Math.random() * size);
- const end = start + Math.floor(Math.random() * (size - start));
+  const hijoEventos: Evento[] = [];
+  const materiasIncluidas = new Set<string>();
 
+  // Agregar eventos del primer padre
+  padre1.eventos.forEach((evento) => {
+    hijoEventos.push(evento);
+    materiasIncluidas.add(evento.materia._id.toString());
+  });
 
- const hijoEventos = padre1.eventos.slice(start, end);
+  // Agregar eventos del segundo padre que no estén ya incluidos
+  padre2.eventos.forEach((evento) => {
+    const materiaId = evento.materia._id.toString();
+    if (!materiasIncluidas.has(materiaId)) {
+      hijoEventos.push(evento);
+      materiasIncluidas.add(materiaId);
+    }
+  });
 
-
- padre2.eventos.forEach((evento) => {
-   if (!hijoEventos.find((e) => e.materia._id.equals(evento.materia._id))) {
-     hijoEventos.push(evento);
-   }
- });
-
-
- return { eventos: hijoEventos };
+  return { eventos: hijoEventos };
 }
+
 
 
 // Función para penalizar falta de separación entre eventos del mismo profesor
@@ -388,15 +393,12 @@ export async function algoritmoGenetico(
        }
      })
    );
-
-
    // Ordenar población por aptitud
    poblacion.sort((a, b) => a.aptitud! - b.aptitud!);
 
 
    // Preservar los mejores individuos (elitismo)
    const elite = poblacion.slice(0, Math.floor(tamanoPoblacion * 0.1));
-
 
    // Selección por torneo
    const padres: Individuo[] = [];
@@ -444,11 +446,16 @@ export async function generarEventosAleatoriosSemana(grupo: any) {
 
 
  // Filtrar materias por nivel y plan del grupo
- const materias = await MateriaModel.find({
-   nivel: grupo.semestre,
-   plan: grupo.plan, // Agregamos el filtro por plan
- });
+ const asignaciones = await AsignacionModel.find({ grupo: grupo._id }).populate('materia');
 
+ if (asignaciones.length === 0) {
+   throw new Error(`No se encontraron asignaciones para el grupo ${grupo.nombre}`);
+ }
+
+ const materias = asignaciones.map(asignacion => asignacion?.materia);
+ if (materias.length === 0) {
+  throw new Error(`No se encontraron asignaciones para el grupo ${grupo.nombre}`);
+}
 
  // Verificar si se encontraron materias
  if (materias.length === 0) {
@@ -469,7 +476,7 @@ export async function generarEventosAleatoriosSemana(grupo: any) {
 
 
  for (const materia of materias) {
-   const profesoresDisponibles = await obtenerProfesorDisponible2(materia._id);
+   const profesoresDisponibles = await obtenerProfesorDisponible(materia._id, grupo._id);
    let profesorAsignado =
      profesoresDisponibles.length > 0 ? profesoresDisponibles[0] : null;
 
@@ -486,7 +493,6 @@ export async function generarEventosAleatoriosSemana(grupo: any) {
 
    let sesionesAsignadas = 0;
    let indiceHorario = 0;
-
 
    while (sesionesAsignadas < materia.sesiones) {
      if (indiceHorario >= posiblesHorarios.length) {
@@ -528,8 +534,6 @@ export async function generarEventosAleatoriosSemana(grupo: any) {
            horaFin: horaFin,
            idHorario: materia?._id + (profesorAsignado?._id || profesorAsignado) + grupo._id,
          };
-
-
          eventosSemana.push(evento);
          sesionesAsignadas++;
        }
@@ -539,8 +543,6 @@ export async function generarEventosAleatoriosSemana(grupo: any) {
      indiceHorario++;
    }
  }
-
-
  return eventosSemana;
 }
 
@@ -686,34 +688,53 @@ async function obtenerProfesorDisponible2(materia: string) {
  return profesoresDisponibles;
 }
 
+async function obtenerProfesorDisponible(materiaId: string, grupoId: string) {
+  // Busca en la colección de asignaciones
+  const asignacion = await AsignacionModel.findOne({
+    materia: materiaId,
+    grupo: grupoId,
+  }).populate("profesor"); // Usamos populate para traer los datos del profesor
+
+  if (!asignacion || !asignacion?.profesor) {
+    // Si no se encuentra asignación o no hay profesor, retornamos un arreglo vacío
+    return [];
+  }
+
+  // Devuelve el profesor asignado
+  return [asignacion.profesor];
+}
+
 
 // Función para obtener un salón disponible
 async function obtenerSalonDisponible(
- horarioC: any,
- tipoSalon: string,
- eventos: Evento[]
+  horarioC: any,
+  tipoSalon: string,
+  eventos: Evento[]
 ) {
- const salones = await SalonModel.find({ tipo: tipoSalon });
- for (const salon of salones) {
-   const disponible = !eventos.some((evento) => {
-     if (!evento.salon || !evento.salon.equals(salon._id)) {
-       return false;
-     }
-     const eventoHorario = convertirFormatoHorario({
-       inicio: evento.horaInicio,
-       fin: evento.horaFin,
-     });
-     const solapamiento =
-       eventoHorario.dia === horarioC.dia &&
-       eventoHorario.inicio < horarioC.fin &&
-       eventoHorario.fin > horarioC.inicio;
-     return solapamiento;
-   });
-   if (disponible) {
-     return salon;
-   }
- }
- return null;
+  // Obtener salones y mezclarlos aleatoriamente
+  const salones = await SalonModel.find({ tipo: tipoSalon });
+  const salonesMezclados = salones.sort(() => Math.random() - 0.5);
+
+  for (const salon of salonesMezclados) {
+    const disponible = !eventos.some((evento) => {
+      if (!evento.salon || !evento.salon.equals(salon._id)) {
+        return false;
+      }
+      const eventoHorario = convertirFormatoHorario({
+        inicio: evento.horaInicio,
+        fin: evento.horaFin,
+      });
+      const solapamiento =
+        eventoHorario.dia === horarioC.dia &&
+        eventoHorario.inicio < horarioC.fin &&
+        eventoHorario.fin > horarioC.inicio;
+      return solapamiento;
+    });
+    if (disponible) {
+      return salon;
+    }
+  }
+  return null;
 }
 
 
@@ -781,7 +802,6 @@ export const crearEventos = async (grupo: any) => {
 
  // Creamos el individuo inicial para Simulated Annealing
  const individuoInicial: Individuo = { eventos: mejorIndividuoGeneticoEventos };
-
 
  // Parámetros de Simulated Annealing
  const temperaturaInicial = 1000;
