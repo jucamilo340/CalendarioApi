@@ -725,7 +725,7 @@ export async function simulatedAnnealing(
 // Función para crear los eventos utilizando el algoritmo genético y Simulated Annealing
 export const crearEventos = async (grupo: any) => {
   // Ejecutamos el algoritmo genético
-  const mejorIndividuoGeneticoEventos = await algoritmoGenetico(5, 10, grupo);
+  const mejorIndividuoGeneticoEventos = await algoritmoGenetico(10, 20, grupo);
 
   // Creamos el individuo inicial para Simulated Annealing
   const individuoInicial: Individuo = { eventos: mejorIndividuoGeneticoEventos };
