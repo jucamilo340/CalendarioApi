@@ -725,16 +725,16 @@ export async function simulatedAnnealing(
 // Función para crear los eventos utilizando el algoritmo genético y Simulated Annealing
 export const crearEventos = async (grupo: any) => {
   // Ejecutamos el algoritmo genético
-  const mejorIndividuoGeneticoEventos = await algoritmoGenetico(10, 20, grupo);
+  const mejorIndividuoGeneticoEventos = await algoritmoGenetico(50, 100, grupo);
 
   // Creamos el individuo inicial para Simulated Annealing
   const individuoInicial: Individuo = { eventos: mejorIndividuoGeneticoEventos };
 
   // Parámetros de Simulated Annealing (comentados dado el ejemplo original)
-  // const temperaturaInicial = 1000;
+  const temperaturaInicial = 1000;
   const temperaturaFinal = 0.01;
-  // const tasaEnfriamiento = 0.9;
-  // const iteracionesPorTemperatura = 100;
+  const tasaEnfriamiento = 0.9;
+   const iteracionesPorTemperatura = 100;
 
   // Aquí se podrían ajustar los parámetros de SA según necesidades.
   // Ejemplo:
@@ -742,14 +742,14 @@ export const crearEventos = async (grupo: any) => {
   // const tasaEnfriamiento = 0.98;
   // const iteracionesPorTemperatura = 50;
 
-  // const mejorIndividuo = await simulatedAnnealing(
-  //   individuoInicial,
-  //   grupo,
-  //   temperaturaInicial,
-  //   temperaturaFinal,
-  //   tasaEnfriamiento,
-  //   iteracionesPorTemperatura
-  // );
+   const mejorIndividuo = await simulatedAnnealing(
+     individuoInicial,
+     grupo,
+     temperaturaInicial,
+     temperaturaFinal,
+     tasaEnfriamiento,
+     iteracionesPorTemperatura
+   );
 
   return mejorIndividuoGeneticoEventos;
 };
