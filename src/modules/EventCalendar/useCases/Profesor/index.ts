@@ -39,7 +39,7 @@ export class ProfesorController {
       const asignaciones = await AsignacionModel.find(filter).populate('profesor');
   
       const profesoresConHorasAsignadas = await Promise.all(
-        asignaciones.map(async (asignacion) => {
+        asignaciones.map(async (asignacion: any) => {
           const profesor = asignacion.profesor;
           if (!profesor) return null;
   
