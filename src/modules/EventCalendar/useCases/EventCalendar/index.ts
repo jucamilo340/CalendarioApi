@@ -139,7 +139,6 @@ export class EventCalendarController {
         //   return response.status(400).json({ message: `Hay materias sin profesor asignado`});
         // }
         const eventos = await crearEventos(grupoExist);
-        console.log(eventos, 'eventos');
         await eventos?.map((evento: any) => {
           eventosG.push({
             title: 'NaN',
