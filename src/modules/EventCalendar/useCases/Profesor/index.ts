@@ -1,53 +1,72 @@
 import { Request, Response } from "express";
 import { CustomError } from "../../../../shared/errors/CustomError";
-import { ProfesorModel } from "../../entities/Models";
+import { AsignacionModel, ProfesorModel } from "../../entities/Models";
 import { convertirFormatoHorario, obtenerHorasAsignadasPorProfesor } from "../../../../utils/methods";
 
 export class ProfesorController {
 
-    async getAll(request: Request, response: Response) {
-        try {
-          const { materiaId, horario, eventoId }: any = request.query;
-          const filter: any = {};
-          if (materiaId) {
-            filter.materias = materiaId;
-          }
-          if (horario) {
-            const horarioC = convertirFormatoHorario(JSON.parse(horario));
-            // filter.disponibilidad = {
-            //   $elemMatch: {
-            //     dia: horarioC.dia,
-            //     inicio: { $lte: horarioC.inicio },
-            //     fin: { $gte: horarioC.fin }
-            //   }
-            // };
-            filter.ocupacion = {
-              $not: {
-                $elemMatch: {
-                  dia: horarioC.dia,
-                  inicio: { $lte: horarioC.fin },
-                  fin: { $gt: horarioC.inicio },
-                  idEvent: { $ne: eventoId }
-                }
-              }
-            }
-          }
-          const profesores = await ProfesorModel.find(filter);
-          const profesoresConHorasAsignadas = await Promise.all(
-            profesores.map(async (profesor) => {
-              const horasAsignadas = await obtenerHorasAsignadasPorProfesor(profesor._id);
-              return { ...profesor.toObject(), horasAsignadas };
-            })
-          );
-          return response.status(200).json(profesoresConHorasAsignadas);
-        } catch (err) {
-          if (err instanceof CustomError) {
-            response.status(err.status).json({ message: err.message });
-          } else {
-            response.status(500).json({ message: "Internal server error" });
-          }
-        }
+  async getAll(request: Request, response: Response) {
+    try {
+      const { materiaId, grupo, horario, eventoId }: any = request.query;
+      const filter: any = {};
+  
+      // Aplicar filtro por materia si se proporciona
+      if (materiaId) {
+        filter.materia = materiaId;
       }
+  
+      // Aplicar filtro por grupo si se proporciona
+      if (grupo) {
+        filter.grupo = grupo;
+      }
+  
+      // Aplicar filtro por horario si se proporciona
+      if (horario) {
+        const horarioC = convertirFormatoHorario(JSON.parse(horario));
+        filter.ocupacion = {
+          $not: {
+            $elemMatch: {
+              dia: horarioC.dia,
+              inicio: { $lte: horarioC.fin },
+              fin: { $gt: horarioC.inicio },
+              idEvent: { $ne: eventoId },
+            },
+          },
+        };
+      }
+  
+      // Buscar asignaciones según los filtros
+      const asignaciones = await AsignacionModel.find(filter).populate('profesor');
+  
+      const profesoresConHorasAsignadas = await Promise.all(
+        asignaciones.map(async (asignacion) => {
+          const profesor = asignacion.profesor;
+          if (!profesor) return null;
+  
+          const horasAsignadas = await obtenerHorasAsignadasPorProfesor(profesor._id);
+  
+          return {
+            ...profesor.toObject(),
+            horasAsignadas,
+          };
+        })
+      );
+  
+      // Filtrar nulos en caso de asignaciones sin profesor
+      const resultado = profesoresConHorasAsignadas.filter(Boolean);
+  
+      return response.status(200).json(resultado);
+    } catch (err) {
+      if (err instanceof CustomError) {
+        response.status(err.status).json({ message: err.message });
+      } else {
+        console.error('Error interno:', err);
+        response.status(500).json({ message: "Internal server error" });
+      }
+    }
+  }
+  
+  
 
   async create(request: Request, response: Response) {
     try {

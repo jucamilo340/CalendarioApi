@@ -106,9 +106,9 @@ export class EventCalendarController {
   async generarHorario(request: Request, response: Response) {
     const { id } = request.params;
     const { accion } = request.body;
-    console.log(request.body);
     if(accion === 'crear') {
       try {
+        await borrarTodosLosDatos();
         await procesarExcel();
         return response.status(200).json({ message: "Horario generado" });
       } catch (error) {

@@ -20,7 +20,7 @@ function generarCedulaUnica(indice) {
 export async function borrarTodosLosDatos() {
   try {
     await Promise.all([
-      ProfesorModel.deleteMany({}),
+      ProfesorModel.deleteMany({}, { ocupacion: [] }),
       PlanModel.deleteMany({}),
       EventCalendarModel.deleteMany({}),
       MateriaModel.deleteMany({}),
@@ -41,20 +41,16 @@ export async function procesarExcel() {
     const rutaArchivo = path.resolve(__dirname, "../Assets/excel.xlsx");
     const workbook = xlsx.readFile(rutaArchivo);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
     // Convertir a formato JSON
     const data = xlsx.utils.sheet_to_json(sheet);
-
     // Crear un Set para almacenar datos únicos
     const planes = new Set();
     const materias = [];
     const grupos = new Set();
     const profesores = new Set();
     const asignaciones = [];
-
     // Recorrer el archivo y procesar cada fila
     let indiceProfesor = 0; // Índice para generar cédulas únicas
-
     for (const row of data) {
       // Extraer datos
       const {
@@ -65,7 +61,6 @@ export async function procesarExcel() {
         Grupo: grupo,
         "Nombre del docente": nombreDocente,
       } = row;
-
       // Añadir plan
       if (codigoPensum) {
         planes.add({
@@ -75,7 +70,6 @@ export async function procesarExcel() {
           horario: "diurno", // Valor por defecto
         });
       }
-
       // Añadir materia
       if (codigoAsignatura && nombreAsignatura) {
         materias.push({
@@ -90,7 +84,6 @@ export async function procesarExcel() {
           codigoPensum,
         });
       }
-
       // Añadir grupo
       if (grupo) {
         grupos.add({
@@ -101,7 +94,6 @@ export async function procesarExcel() {
           codigoPensum,
         });
       }
-
       // Añadir profesor
       if (nombreDocente) {
         profesores.add({
@@ -109,7 +101,6 @@ export async function procesarExcel() {
           cedula: generarCedulaUnica(indiceProfesor++), // Generar cédula única
         });
       }
-
       // Crear asignación
       if (codigoAsignatura && grupo && nombreDocente) {
         asignaciones.push({
@@ -119,7 +110,6 @@ export async function procesarExcel() {
         });
       }
     }
-
     // Guardar datos en MongoDB
     await guardarDatos(
       Array.from(planes),

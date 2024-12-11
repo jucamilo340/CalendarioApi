@@ -1,4 +1,4 @@
-import app from "./app";
+import app from "./src/shared/app";
 
 const PORT = process.env.PORT;
 

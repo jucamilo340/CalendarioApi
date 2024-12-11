@@ -8,12 +8,18 @@ export class MateriaController {
     try {
       const { semestre } = request.query;
       const { plan } = request.query;
+      const { grupo } = request.query;
       const filter: any = {};
       if (semestre) {
           filter.nivel = semestre;
       }
       if (plan) {
         filter.plan = plan;
+    }
+    if (grupo) {
+      const asignaciones = await AsignacionModel.find({ grupo: grupo }).populate('materia');
+      const materias = asignaciones.map((asignacion: any) => asignacion?.materia);
+      return response.status(200).json(materias);
     }
       const materias = await MateriaModel.find(filter);
       return response.status(200).json(materias);

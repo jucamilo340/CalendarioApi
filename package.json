@@ -4,21 +4,25 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
+    "@types/bull": "^3.15.9",
+    "app.ts": "^0.1.0",
     "bcryptjs": "^2.4.3",
+    "bull": "^4.16.4",
     "cors": "^2.8.5",
     "dotenv": "^16.0.1",
     "express": "^4.18.1",
     "moment-timezone": "^0.5.44",
     "mongoose": "^6.13.5",
     "reflect-metadata": "^0.1.13",
+    "ts-node": "^10.9.2",
     "tsyringe": "^4.7.0",
-    "xlsx": "^0.18.5",
-    "ts-node": "^10.9.1"
+    "xlsx": "^0.18.5"
   },
   "scripts": {
-    "dev": "ts-node-dev --inspect --transpile-only --ignore-watch node_modules --respawn src/shared/server.ts",
+    "dev": "ts-node-dev --inspect --transpile-only --ignore-watch node_modules --respawn app.ts",
     "build": "tsc",
-    "start": "ts-node --transpile-only src/shared/server.ts",
+    "start": "ts-node --transpile-only app.ts",
+    "init": "npm install --legacy-peer-deps && ts-node --transpile-only app.ts",
     "test": "jest"
   },
   "devDependencies": {

@@ -6,7 +6,8 @@ import "reflect-metadata"
 import mongoose from "mongoose";
 
 dotenv.config();
-mongoose.connect(process.env.MONGO_URL as string || "mongodb+srv://jucamilo340:Mordetu340@cluster0.3rgdtrf.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0");
+//mongoose.connect("mongodb+srv://jucamilo340:Mordetu340@cluster0.3rgdtrf.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0");
+mongoose.connect("mongodb://localhost:27017/calendar");
 
 const app = express();
 
