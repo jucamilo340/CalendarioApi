@@ -12,6 +12,7 @@ import {
 } from "../modules/EventCalendar/entities/Models";
 import fs from "fs";
 import path from "path";
+import { crearSalones } from "./methods";
 
 // Función para generar un número de cédula único
 function generarCedulaUnica(indice) {
@@ -26,7 +27,7 @@ export async function borrarTodosLosDatos() {
       MateriaModel.deleteMany({}),
       AsignacionModel.deleteMany({}),
       GrupoModel.deleteMany({}),
-      SalonModel.updateMany({}, { ocupacion: [] }),
+      SalonModel.deleteMany({}, { ocupacion: [] }),
     ]);
 
     console.log("Todos los datos han sido eliminados exitosamente.");
@@ -118,6 +119,7 @@ export async function procesarExcel() {
       Array.from(profesores),
       asignaciones
     );
+    await crearSalones();
   } catch (error) {
     console.error("Error al procesar el Excel:", error);
   }

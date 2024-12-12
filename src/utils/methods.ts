@@ -1,5 +1,5 @@
 import moment from 'moment-timezone';
-import { AsignacionModel, EventCalendarModel, GrupoModel, MateriaModel, ProfesorModel } from '../modules/EventCalendar/entities/Models';
+import { AsignacionModel, EventCalendarModel, GrupoModel, ISalon, MateriaModel, ProfesorModel, SalonModel } from '../modules/EventCalendar/entities/Models';
 import { CustomError } from '../shared/errors/CustomError';
 
 interface HorarioEntrada {
@@ -197,4 +197,68 @@ export async function AsignacionService(grupoId: string) {
       console.error("Error al crear asignaciones:", err);
       throw err;
     }
+}
+
+
+export async function crearSalones() {
+  try {
+    const salones: Partial<ISalon>[] = [
+      {
+        nombre: '01D',
+        tipo: 'Aula',
+        codigo: '01D',
+        facultad: 'Ingeniería',
+        capacidad: 30,
+        disponibilidad: [
+        ],
+        ocupacion: []
+      },
+      {
+        nombre: '02D',
+        tipo: 'Aula',
+        codigo: '02D',
+        facultad: 'Ingeniería',
+        capacidad: 35,
+        disponibilidad: [
+        ],
+        ocupacion: []
+      },
+      {
+        nombre: '03D',
+        tipo: 'Aula',
+        codigo: '03D',
+        facultad: 'Ingeniería',
+        capacidad: 25,
+        disponibilidad: [
+        ],
+        ocupacion: []
+      },
+      {
+        nombre: '04D',
+        tipo: 'Aula',
+        codigo: '04D',
+        facultad: 'Ciencias',
+        capacidad: 40,
+        disponibilidad: [
+        ],
+        ocupacion: []
+      },
+      {
+        nombre: '05D',
+        tipo: 'Aula',
+        codigo: '05D',
+        facultad: 'Ciencias',
+        capacidad: 20,
+        disponibilidad: [
+        ],
+        ocupacion: []
+      }
+    ];
+
+    const salonesCreados = await SalonModel.create(salones);
+    return salonesCreados;
+  } catch (error) {
+    console.error('Error al crear salones:', error);
+    throw error;
+  }
 }
