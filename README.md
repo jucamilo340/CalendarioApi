@@ -1,32 +1,27 @@
-# 📅 FullCalendar Scheduler Back-end
+# Generarion de Horario academicos utilizando algorimos Heuristicos
 
-Project inspired by Google Calendar
+## Descripción del Proyecto
 
-if you want to improve or implement some functionality, feel free!
+Este proyecto es una aplicación web para la generación de horarios académicos para el programa de Ingeniería de Sistemas, utilizando algoritmos heurísticos para optimizar la asignación de clases, espacios y recursos.
 
-## Stacks: 
+## Características Principales
 
-- Typescript
-- Express
-- MongoDb
-- Nodejs
+- Generación automática de horarios académicos.
+- Interfaz intuitiva basada en FullCalendar.
+- Optimización mediante algoritmos heurísticos.
+- Gestión flexible de recursos y restricciones académicas.
 
+## Requisitos Previos
 
-### Iniciando o Projeto
+- Node.js (versión 14 o superior).
+- npm (versión 6 o superior).
 
-**1-** Clone repository and install dependencies.
-```sh
-# install dependencies
-> yarn
-# or
-> yarn install
+## Instalación
 
-# copy .env file
-> cp .env.example .env
+Clonar el repositorio, instalar las dependencias y ejecutar el proyecto utilizando los siguientes comandos:
 
-# start project
-> yarn dev
+```bash
+git clone https://github.com/tu-usuario/fullcalendar-scheduler-client.git
+cd fullcalendar-scheduler-client
+npm run init
 
-# open in
-http://localhost:3000/
-```
